@@ -1,0 +1,13 @@
+numpy==1.16.4
+jieba==0.39
+grpcio>=1.19.0
+Flask==1.1.1
+requests>=2.21.0
+scikit-learn>=0.21.1
+retrying
+pandas==0.24.2
+six>=1.15.0
+setuptools>=41.0.0
+gunicorn==20.0.4
+eventlet==0.28.0
+xlrd==1.2.0
