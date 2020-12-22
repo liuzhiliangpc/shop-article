@@ -23,9 +23,10 @@ def run(request):
     r = {}
     # 获取一条请求数据
     event = request
-    # 检查task_id数据类型
+    # 检查task_id、task_create_time、business_category、industry_l2的数据类型
     if not isinstance(event['task_id'], str) or not isinstance(
-            event['task_create_time'], str) or not isinstance(event['business_category'], str):
+            event['task_create_time'], str) or not isinstance(event['business_category'], str) or not \
+            isinstance(event['industry_l2'], str):
         r['retcode'] = 6
         r['msg'] = '参数数据类型错误'
         return r
