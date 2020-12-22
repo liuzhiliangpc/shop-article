@@ -53,10 +53,12 @@ def update_last_id(params, source, last_id='20201222'):
     mypg = Mypsycopg2()
     sql = """select * from {}""".format(source)
     df = mypg.execute(sql)
-    insert_sql = "INSERT INTO {} (id, task_id, task_create_time, business_category, task_nums, shop_task_json, status, " \
-           "message, industry_l2)  VALUES (%s, '%s', '%s', '%s', %s, '%s', %s, '%s', '%s')".format(source) % \
-           ((len(df) + 1), params['task_id'], params['task_create_time'], params['business_category'],
-            int(params['task_nums']), json.dumps(params, ensure_ascii=False), 0, '操作成功', params['industry_l2'])
+    params['shop_task_json'] = json.dumps(params, ensure_ascii=False)
+    params['id'] = len(df) + 1
+
+    insert_sql = "INSERT INTO {} (id, task_id, task_create_time, business_category, " \
+                 "task_nums, shop_task_json, industry_l2) VALUES (%(id)s, %(task_id)s, %(task_create_time)s, " \
+                 "%(business_category)s, %(task_nums)s, %(shop_task_json)s, %(industry_l2)s)".format(source)
     # insert_sql = """INSERT INTO %(source_table)s (crawler_id) VALUES (%(crawler_id)s)"""
     # insert_sql = """INSERT INTO {} (crawler_id) VALUES (%(crawler_id)s)""".format(source)
     # # params = {"source_table": source_table, "crawler_id": last_id}
@@ -64,7 +66,7 @@ def update_last_id(params, source, last_id='20201222'):
     mypg.close()
     try:
         mypg = Mypsycopg2()
-        mypg.execute(insert_sql)
+        mypg.execute(insert_sql, params)
         logger.info("向表{}中更新最新爬虫数据id {}".format(source, last_id))
         mypg.close()
     except Exception as e:
@@ -74,7 +76,7 @@ def update_last_id(params, source, last_id='20201222'):
     mypg.close()
     return df
 
-def get_shop_task_data(source_table, origin_id, last_id):
+def get_shop_task_data(source_table, origin_id=1, last_id=10):
     mypg = Mypsycopg2()
     # query_sql = """SELECT * from %(source_table)s WHERE id between %(gte_id)s and %(lte_id)s"""
     query_sql = """SELECT * from {} WHERE id between %(gte_id)s and %(lte_id)s""".format(source_table)
@@ -89,6 +91,8 @@ def get_shop_task_data(source_table, origin_id, last_id):
         logger.error("执行sql语句,从表{}中获取爬取id为{}到{}的数据失败 {}".format(source_table, origin_id, last_id, e))
     # 关闭数据库连接
     mypg.close()
+    return data
+
 if __name__ == '__main__':
     shop = ShopTaskQuery()
     d = list([{
@@ -109,7 +113,7 @@ if __name__ == '__main__':
                 "root_D": ""  # 词根D
             }])
     data = {
-        "task_id": "564855",  # 任务编号id
+        "task_id": "564859",  # 任务编号id
         "task_create_time": "2020-12-08 10:03:21",  # 任务创建时间
         "business_category": "B2B",  # 任务为B2B类型还是B2C类型（本地服务）
         "task_nums": 2,  # 总的任务请求素材数
