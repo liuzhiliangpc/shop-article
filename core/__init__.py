@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+# encoding: utf-8
+
+import os
+import sys
+
+dir_home = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(os.path.join(dir_home, "../"))
