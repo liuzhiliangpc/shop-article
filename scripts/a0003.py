@@ -41,13 +41,11 @@ def run(request):
         r['msg'] = '确认接收的文章id有重复'
         return r
     # 检验组合词id是否有重复
-    for dic in event['data']:
-        numlis = list(dic['compound_words_id'])
-        numset = list(set(numlis))
-        if len(numset) < len(numlis):
-            r['retcode'] = 2
-            r['msg'] = '组合词编号有重复'
-            return r
+    if len(list(set([dic['compound_words_id'] for dic in event['data']]))) < len([dic['compound_words_id']
+                                                                                  for dic in event['data']]):
+        r['retcode'] = 2
+        r['msg'] = '组合词编号有重复'
+        return r
     logger.info('[素材确认接收] [任务编号:{}]'.format(str(event['task_id'])))
     # debug_option = event.get('debug', None)  # 调试模式默认为'dev'
     ret = CT.material_recieve(event)

@@ -56,13 +56,30 @@ class Mypsycopg2():
 
 if __name__ == '__main__':
     mypg = Mypsycopg2()
-
-    # 查询sql
-    # sql = """select id, title from ai_article where crawler_time >  limit 10"""
-    # sql = """SELECT id, title, crawler_time FROM "ai_article_liuzhiliang" \
-    #         WHERE to_timestamp(crawler_time, 'YYYY-MM-DD hh24:mi:ss')  \
-    #         between '2020-11-19 23:36:35' and '2020-11-19 23:36:59' LIMIT 1000"""
-    # data = mypg.execute(sql)
+    #
+    # # 查询sql
+    sql = """select * from shop_task"""
+    # # sql = """SELECT id, title, crawler_time FROM "ai_article_liuzhiliang" \
+    # #         WHERE to_timestamp(crawler_time, 'YYYY-MM-DD hh24:mi:ss')  \
+    # #         between '2020-11-19 23:36:35' and '2020-11-19 23:36:59' LIMIT 1000"""
+    # params = {'id': 3,
+    #           'task_id': '123444',
+    #           'task_create_time': '',
+    #           'business_category': '',
+    #           'task_nums': 3,
+    #           'shop_task_json': '',
+    #           'status': 0,
+    #           'message': '',
+    #           'industry_l2': ''}
+    # sql1 = "INSERT INTO shop_task (id, task_id, task_create_time, business_category, task_nums, shop_task_json, status, " \
+    #        "message, industry_l2)  VALUES (%s, '%s', '%s', '%s', %s, '%s', %s, '%s', '%s')" % \
+    #        (params['id'], params['task_id'], params['task_create_time'], params['business_category'],
+    #         params['task_nums'], params['shop_task_json'], params['status'], params['message'], params['industry_l2'])
+    # sql1 = """INSERT INTO shop_task (id, task_id, task_create_time, business_category, task_nums, shop_task_json, status, message, industry_l2)  VALUES (4, '564815', '2020-12-08 10:03:21', 'B2B', 2, '', 0, '操作成功', '休闲娱乐')
+    # """
+    # mypg.execute(sql1)
+    data = mypg.execute(sql)
+    mypg.close()
     # data = mypg.execute()
     # print("the version of database is {}".format(data))
 #     # 创建表格
@@ -71,8 +88,7 @@ if __name__ == '__main__':
 #     # data = mypg.execute(sql)
 #
 #     # 插入
-#     sql ="INSERT INTO test (num, name)  VALUES (%s, '%s')" %(105, "(一)''明知''是伪造的信用卡而持有、运输的，或者明知是伪造的空白信用卡而持有、运输，数量较大的;\n\n(二)非法持有他人信用卡，数量较大的;\n\n(三)使用虚假的身份证明骗领信用卡的;")
-#     # \n符号插入
+    #     # \n符号插入
 #     # mypg.execute(sql)
 #
 #     sql = "INSERT INTO test (num, name)  VALUES (%s, E'%s')" %(106, """

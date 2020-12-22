@@ -2,6 +2,7 @@
 # encoding: utf-8
 import os
 import pandas as pd
+from tools.mypsycopg2 import Mypsycopg2
 
 class MaterialTag:
     def __init__(self):
@@ -91,6 +92,20 @@ class MaterialTag:
                     back['msg'] = '草稿箱已空'
         return back
 
+    # mypg = Mypsycopg2()
+    # # query_sql = """SELECT * from %(source_table)s WHERE id between %(gte_id)s and %(lte_id)s"""
+    # query_sql = """SELECT * from {} WHERE id between %(gte_id)s and %(lte_id)s""".format(source_table)
+    # # params = {"source_table": source_table, "gte_id": origin_id, "lte_id": last_id}
+    # params = {"gte_id": origin_id, "lte_id": last_id}
+    # try:
+    #     data = mypg.execute(query_sql, params)  # 获取当前时间范围内的数据
+    #     logger.info(
+    #         "获取爬取id为{0}到{1}的数据，数据量为{2}".format(origin_id, last_id, data.shape[0])
+    #     )
+    # except Exception as e:
+    #     logger.error("执行sql语句,从表{}中获取爬取id为{}到{}的数据失败 {}".format(source_table, origin_id, last_id, e))
+    # # 关闭数据库连接
+    # mypg.close()
 if __name__ == '__main__':
     q = {
         "task_id": '202090',  # 任务编号id

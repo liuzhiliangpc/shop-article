@@ -3,6 +3,9 @@
 
 import os
 import pandas as pd
+from tools.mypsycopg2 import Mypsycopg2
+from core.core import logger
+import json
 
 class ShopTaskQuery:
     def __init__(self):
@@ -18,12 +21,14 @@ class ShopTaskQuery:
             # 检查任务编号是否重复
             if data['task_id'] in list(df_task['task_id']):
                 return 3
-        df_task.loc[len(df_task)] = [data['task_id'], data, data['task_create_time'],
-                                     data['business_category'], data['task_nums'],
-                                     data['data']]
+        # df_task.loc[len(df_task)] = [data['task_id'], data, data['task_create_time'],
+        #                              data['business_category'], data['task_nums'],
+        #                              data['data']]
+        # 若无误则存入数据库中
+        back_df = update_last_id(data, "shop_task")
         os.remove(self.task_record_pkl)
         # save
-        df_task.to_pickle(self.task_record_pkl)
+        back_df.to_pickle(self.task_record_pkl)
         return 0
 
     def status_tag(self, data):
@@ -37,6 +42,53 @@ class ShopTaskQuery:
             r['msg'] = '任务编号重复 重写任务编号'
         return r
 
+def update_last_id(params, source, last_id='20201222'):
+    # 更新最新的时间到数据记录（会有重复数据，保留以验证流程完整）
+    # if source == "ai":
+    #     source_table = "ai_process_log"  # ai_process_log表
+    # elif source == "manual":
+    #     source_table = "manual_process_log"  # manual_process_log表
+    # else:
+    #     raise ValueError("未定义的数据来源")
+    mypg = Mypsycopg2()
+    sql = """select * from {}""".format(source)
+    df = mypg.execute(sql)
+    insert_sql = "INSERT INTO {} (id, task_id, task_create_time, business_category, task_nums, shop_task_json, status, " \
+           "message, industry_l2)  VALUES (%s, '%s', '%s', '%s', %s, '%s', %s, '%s', '%s')".format(source) % \
+           ((len(df) + 1), params['task_id'], params['task_create_time'], params['business_category'],
+            int(params['task_nums']), json.dumps(params, ensure_ascii=False), 0, '操作成功', params['industry_l2'])
+    # insert_sql = """INSERT INTO %(source_table)s (crawler_id) VALUES (%(crawler_id)s)"""
+    # insert_sql = """INSERT INTO {} (crawler_id) VALUES (%(crawler_id)s)""".format(source)
+    # # params = {"source_table": source_table, "crawler_id": last_id}
+    # params = {"crawler_id": last_id}
+    mypg.close()
+    try:
+        mypg = Mypsycopg2()
+        mypg.execute(insert_sql)
+        logger.info("向表{}中更新最新爬虫数据id {}".format(source, last_id))
+        mypg.close()
+    except Exception as e:
+        logger.error("执行sql语句,向表{}中更新最新爬虫数据id{}失败 {}".format(source, last_id, e))
+    mypg = Mypsycopg2()
+    df = mypg.execute(sql)
+    mypg.close()
+    return df
+
+def get_shop_task_data(source_table, origin_id, last_id):
+    mypg = Mypsycopg2()
+    # query_sql = """SELECT * from %(source_table)s WHERE id between %(gte_id)s and %(lte_id)s"""
+    query_sql = """SELECT * from {} WHERE id between %(gte_id)s and %(lte_id)s""".format(source_table)
+    # params = {"source_table": source_table, "gte_id": origin_id, "lte_id": last_id}
+    params = {"gte_id": origin_id, "lte_id": last_id}
+    try:
+        data = mypg.execute(query_sql, params)  # 获取当前时间范围内的数据
+        logger.info(
+            "获取爬取id为{0}到{1}的数据，数据量为{2}".format(origin_id, last_id, data.shape[0])
+        )
+    except Exception as e:
+        logger.error("执行sql语句,从表{}中获取爬取id为{}到{}的数据失败 {}".format(source_table, origin_id, last_id, e))
+    # 关闭数据库连接
+    mypg.close()
 if __name__ == '__main__':
     shop = ShopTaskQuery()
     d = list([{
@@ -57,12 +109,17 @@ if __name__ == '__main__':
                 "root_D": ""  # 词根D
             }])
     data = {
-        "task_id": "564805",  # 任务编号id
+        "task_id": "564855",  # 任务编号id
         "task_create_time": "2020-12-08 10:03:21",  # 任务创建时间
         "business_category": "B2B",  # 任务为B2B类型还是B2C类型（本地服务）
         "task_nums": 2,  # 总的任务请求素材数
-        "data": d
+        "data": d,
+        "industry_l2": '休闲娱乐'
     }
+    #
+    # print(data_jason)
+    # data1 = json.loads(data_jason)
+    # print(data1)
     print(shop.status_tag(data))
 
 

@@ -118,12 +118,13 @@ if __name__ == "__main__":
             {
                 "compound_words_id": "123",  # 组合词id
                 "compound_words_type": "ABC",  # 组合词类型
-                "compound_words": "上海刑事%@***&&$$$)律师",  # 组合词
+                "compound_words": "上海刑事律师",  # 组合词
                 "root_A": "上海",  # 词根A,缺省为空字符串""
                 "root_B": "刑事",  # 词根B
                 "root_C": "律师",  # 词根C
                 "root_D": "",  # 词根D
             }
-        ]
+        ],
+        "industry_l2": '休闲娱乐'
     }
     print(run(data))
