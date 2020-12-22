@@ -1,0 +1,37 @@
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "query_string": {
+            "query": "%s",
+            "type": "phrase",
+            "fields": [
+              "title"
+            ]
+          }
+        },
+        {"match": {
+            "status": 0
+          }
+        },
+        {
+          "match": {
+            "download_count": 0
+          }
+        },
+        {
+            "match":{
+                "is_used": 0
+            }
+        },
+        {
+          "match": {
+            "business_category": "%s"
+          }
+        }
+      ]
+    }
+  },
+  "size": 10
+}

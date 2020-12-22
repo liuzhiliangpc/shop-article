@@ -8,6 +8,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from retrying import retry
 from milvus import IndexType, MetricType, Status
+from core.core import logger
 
 def filter_text(text):
     if not text :
@@ -177,6 +178,121 @@ def hex2decimal(text):
     cut_text = text[0:8]+ text[16:24]
     return int(cut_text, 16)
 
+# 整型字段的转换与校验
+def valid_int(text):
+    if text == None:
+        return 0
+    if not isinstance(text, int):  # 非整型数据强制转换为整型
+        if text != "":             # 空字符串默认为整数0
+            try:
+                text = int(text)
+                # logger.warning('数据类型警告,{}应为int类型'.format(text))
+            except Exception as e:
+                logger.error('数据类型严重错误'.format(e))
+                text = 0
+        else:
+            text = 0
+    return text
+
+# 字符串数据的转换与校验
+def valid_str(text):
+    if text == None:
+        return ""
+    if not isinstance(text, str):
+        logger.error('数据类型严重错误,{}应为string类型'.format(text))
+        return ""
+    else:
+        return text.strip()
+
+# 列表数据的转换与校验
+def valid_list(text):
+    if text == None:
+        return []
+    if not isinstance(text, list):
+        try:
+            text = json.loads(text)
+            # logger.warning('数据类型警告,{}应为list类型'.format(text))
+        except Exception as e:
+            logger.error('数据类型严重错误,{}应为list类型'.format(text))
+            return []
+    return text
+
+def list_merge(intervals):
+    """
+    合并区间，公共函数
+    :param intervals: 列表[[0,1], [3,6]]
+    :return:
+    """
+    intervals.sort(key=lambda x: x[0])
+    merged = []
+    for interval in intervals:
+        # 如果列表为空，或者当前区间与上一区间不重合，直接添加
+        # if not merged or merged[-1][1] < interval[0]:
+        if not merged or (interval[0] - merged[-1][1]) > 1:
+            merged.append(interval)
+        else:
+            # 否则的话，我们就可以与上一区间进行合并，合并中间一个字符的
+            merged[-1][1] = max(merged[-1][1], interval[1])
+    return merged
+
+def custom_replace_word(text, match_start_end_list, target_word):
+    """
+    自定义替换指定位置的词语，正文替换地名和正文布词公共函数
+    :param text: 文本
+    :param match_start_end_list: 需要替换的位置，格式:[[a,b]]嵌套列表
+    :param target_word: 替换后目标字符串
+    :return:
+    """
+    # 尝试简化方案，仅一个list[list]
+    text_split = []
+    for index, item in enumerate(match_start_end_list):
+        # 首字符处理
+        if index == 0 and item[0] != 0:
+            text_split.append(text[:item[0]])
+        # 中间列表
+        if index > 0:
+            text_split.append(text[match_start_end_list[index - 1][1]:item[0]])
+        # 替换：text[item[0]:item[1]]位置替换为目标关键词
+        text_split.append(target_word)
+        # 尾字符处理
+        if index + 1 == len(match_start_end_list):
+            if item[1] < len(text):
+                text_split.append(text[item[1]:])
+    if text_split:
+        text = "".join(text_split)  # 随机换词后的正文
+    else:
+        text = text  # 缺省为原始文本
+    return text
+
+def get_paragraphs(text):
+    """
+    获取原文的段落结构
+    :param text:
+    :return:
+    """
+    PARAGRAPH_DELIMITERS = r"[\n]"
+    regexp = re.compile(PARAGRAPH_DELIMITERS, re.UNICODE)
+    text = (
+        text.replace("\x01", "")
+            .replace("\x02", "")
+            .replace("\x03", "")
+            .replace("\x04", "")
+            .replace("\x05", "")
+            .replace("\x06", "")
+            .replace("\x07", "")
+            .replace("\x08", "")
+            .replace("\x09", "")
+    )
+    text = text.replace("\u200b", "").replace("\u3000", "")
+    main_text = [((tok, None),) for tok in regexp.split(text) if tok]
+
+    paragraphs = []
+    for paragraph in main_text:
+        current_text = ""
+        for line, annotations in paragraph:
+            current_text += line
+        paragraphs.append(current_text)
+    return paragraphs
 
 if __name__ == "__main__":
     text = "Repost 这是一条#自带声音#的微博：土拨鼠的逃生新技能get，由#华为Mate20#友情提供 http://t.cn/EyAcRWr "
@@ -192,3 +308,6 @@ if __name__ == "__main__":
     print(two_list_join(l1,l2))
     print(two_list_join(ll1,ll2, level=2))
 
+    list_test = [(1,9),(2,5),(19,20),(10,11),(12,20),(0,3),(0,1),(0,2)]
+    list_test = [list(i) for i in list_test]
+    print(list_merge(list_test))
