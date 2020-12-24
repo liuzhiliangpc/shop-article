@@ -37,7 +37,7 @@ cs = CustomSentence()   # 套话实例
 6、若步骤四或五满足则跳过，C词未匹配到，则在第一段后加上包含目标关键词的套话。
 自此，标题和正文布词结束。
 """
-def get_es_data(query_id, paras):
+def get_es_data(indexs, query_id, paras):
     """
     获取ES数据库数据
     :param query_id: es 模板
@@ -47,7 +47,7 @@ def get_es_data(query_id, paras):
     es_back = es.search_pro(
         query_id=query_id,
         paras=paras,
-        indexs="dw_article"
+        indexs=indexs
     )
     es_response = es_back.get("restResponse")
     datas = {}
@@ -302,14 +302,16 @@ def run():
 
 if __name__ == "__main__":
     # es_back = es.search('')
-    search_first_words = ["1", "2", "3"]
-    print("-".join(search_first_words))
-    print(cs.create_manual_sentence(target_word="上海黄金回收"))
-
-    text1 = "上海南京黄金回收北京哪家好？"
-    text2 = clean_location(text1)
-    print(text2)
-
-    print(replace_location(text=text1, target_word=""))
-    print(cs.create_manual_sentence("盾牌"))
-    run()
+    # search_first_words = ["1", "2", "3"]
+    # print("-".join(search_first_words))
+    # print(cs.create_manual_sentence(target_word="上海黄金回收"))
+    #
+    # text1 = "上海南京黄金回收北京哪家好？"
+    # text2 = clean_location(text1)
+    # print(text2)
+    #
+    # print(replace_location(text=text1, target_word=""))
+    # print(cs.create_manual_sentence("盾牌"))
+    # run()
+    article_id = "011053879452603f8b095b7d978bc8"
+    print(get_es_data(indexs="dw_ai_article", query_id="02001", paras=[article_id])['task_id'])
