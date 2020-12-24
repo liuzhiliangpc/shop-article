@@ -5,14 +5,12 @@
 @license:
 @contact: liuzhiliang_pc@163.com
 @software: pycharm
-@file: a0015.py
+@file: a0002.py
 @time: 2020/11/4 21:34
 @desc: 素材请求
 '''
-
 from core.core import logger
 from algos.article.article_publish import get_article
-
 
 def run(request):
     """

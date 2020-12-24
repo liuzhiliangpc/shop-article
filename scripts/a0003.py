@@ -5,15 +5,37 @@
 @license:
 @contact: liuzhiliang_pc@163.com
 @software: pycharm
-@file: a0015.py
+@file: a0003.py
 @time: 2020/11/4 21:34
 @desc: 素材j接收确认
 '''
 from core.core import logger
-from scripts.keyword_layout import get_es_data
 from tools.baixing_elasticsearch import BXElasticSearch
 from tools.log import logger
 from retrying import retry
+
+es = BXElasticSearch()
+
+def get_es_data(indexs, query_id, paras):
+    """
+    获取ES数据库数据，提供一个文档
+    :param indexs: es 索引名
+    :param query_id: es 模板
+    :param paras: 参数列表
+    :return:
+    """
+    es_back = es.search_pro(
+        query_id=query_id,
+        paras=paras,
+        indexs=indexs
+    )
+    es_response = es_back.get("restResponse")
+    datas = {}
+    if es_response:
+        count = es_response["hits"]["total"]["value"]
+        if count > 0:
+            datas = es_response["hits"]["hits"][0]["_source"]  # 取匹配的第一条数据
+    return datas
 
 def run(request):
     """
@@ -115,14 +137,12 @@ def update_es_data(indexs, data_list, id_field):
     :param id_field: 唯一键字段名
     :return:
     """
-    es = BXElasticSearch()
     @retry(stop_max_attempt_number=3)
     def es_retry():
         try:
             es.update_pro(indexs=indexs, data=data_list, id_field=id_field)
         except Exception as e:
             logger.exception(msg=e)
-
     es_retry()
 
 if __name__ == "__main__":

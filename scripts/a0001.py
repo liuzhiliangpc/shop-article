@@ -5,14 +5,11 @@
 @license: 
 @contact: liuzhiliang_pc@163.com
 @software: pycharm
-@file: a0015.py
+@file: a0001.py
 @time: 2020/11/4 21:34
 @desc: 获取店铺任务数据
 '''
 import time
-from core.core import logger
-import os
-import pandas as pd
 from tools.mypsycopg2 import Mypsycopg2
 from core.core import logger
 import json

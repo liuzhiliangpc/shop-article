@@ -30,6 +30,7 @@ WORKDIR /
 #安装yum
 #RUN yum -y update
 #RUN yum -y install gcc-c++ python-devel.x86_64 cyrus-sasl-devel.x86_64
+# centos 中pip install psycopg2会缺少pg_config，pg_config在postgresql-devel
 
 #更新pip镜像源
 RUN pip3 install pip -U
