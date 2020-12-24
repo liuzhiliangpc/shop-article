@@ -2,7 +2,6 @@
 # encoding: utf-8
 import os
 import pandas as pd
-from tools.mypsycopg2 import Mypsycopg2
 
 class MaterialTag:
     def __init__(self):
@@ -13,14 +12,53 @@ class MaterialTag:
         self.material_store = os.path.join(dir_path, 'materials/m_history.pkl')
 
     def material_request(self, query):
+        """
+        material_request 根据已接收过店铺组合词的任务编号，返回指定数量的店铺文章
+        :param query:
+            {
+              "task_id": "202090",
+              "batch_size": 3
+            }
+        task_id 表示发文任务编号，字符串类型；batch_size表示请求文章数目，整型。
+        batch_size不能超过任务剩余文章额度。
+        :return:
+        # 请求返回结果
+        {
+          "retcode": 0,
+          "task_id": "665544",
+          "remain_nums": 1,
+          "data": [
+            {
+              "rowkey": "111111aadd",
+              "compound_words_id": "123",
+              "article_id": "123456",
+              "title": "上海黄金回收哪家好？",
+              "content": "7时25分，交警指挥中心的视频监控系统切换到南京北街与抚顺路交通岗。只见细雨中，几名交警指挥车辆，移动式信号灯也上了岗。",
+              "description": "",
+              "keywords": [],
+              "image_urls": [],
+              "keyword_layout_tag": [],
+            }
+          ],
+          "msg": "操作成功，本次请求后，发文任务有剩余文章额度"
+        }
+        retcode 表示状态码信息，数值类型；
+        remain_nums表示本次请求后剩余文章量，即任务额度已耗尽，整型；
+        msg表示说明信息，字符串类型;
+        data列表内为文章信息。其中rowkey为文章id，文章唯一键，十六进制字符串类型；
+                                compound_words_id为组合词编号，字符串类型；
+                                article_id为文章id，由于布词前文章rowkey和组合词id可能重复，article_id为新建草稿箱文档唯一键；
+                                title为文章标题，字符串类型；
+                                content为文章正文，字符串类型；
+                                description为摘要，目前为空字符串；
+                                keywords为关键词列表，目前为空列表；
+                                image_urls为图片在oss上的url地址，列表类型；
+                                keyword_layout_tag为布词标记，列表类型。
+        """
         df_task = pd.read_pickle(self.task_path)
         df_task['task_id'] = df_task.apply(lambda r: str(r.task_id), axis=1)
         # df_task = pd.read_pickle(r'C:\Users\baixing\Desktop\BX\build_request\algo_engine\algos\cpni\tasks\task.pkl')
         df_material = pd.read_pickle(self.material_store).reset_index(drop=True)
-        # df_material = pd.read_excel(r'C:\Users\baixing\Desktop\BX\shop-article\algos\article\materials\m_history.xlsx').reset_index(drop=True)
-
-
-        ret = []
         if query['task_id'] not in list(df_task['task_id']):
             back = {}
             back['retcode'] = 4
@@ -55,6 +93,7 @@ class MaterialTag:
                         article_info['rowkey'] = str(df_material['m_id'][i*query['batch_size'] + j])
                         p = task_query['data'].pop(0)
                         article_info['compound_words_id'] = str(p['compound_words_id'])
+                        article_info['article_id'] = '待定0000'
                         article_info['title'] = str(df_material['m_title'][i*query['batch_size'] + j])
                         article_info['content'] = str(df_material['m_contents'][i*query['batch_size'] + j])
                         # print(str(df_material['m_id'][i * query['batch_size'] + j]))
@@ -81,6 +120,7 @@ class MaterialTag:
                         article_info['rowkey'] = str(df_material['m_id'][i*query['batch_size'] + j])
                         p = task_query['data'].pop(0)
                         article_info['compound_words_id'] = str(p['compound_words_id'])
+                        article_info['article_id'] = '待定0000'
                         article_info['title'] = str(df_material['m_title'][i*query['batch_size'] + j])
                         article_info['content'] = str(df_material['m_contents'][i*query['batch_size'] + j])
                         back['data'].append(article_info)
@@ -92,20 +132,6 @@ class MaterialTag:
                     back['msg'] = '草稿箱已空'
         return back
 
-    # mypg = Mypsycopg2()
-    # # query_sql = """SELECT * from %(source_table)s WHERE id between %(gte_id)s and %(lte_id)s"""
-    # query_sql = """SELECT * from {} WHERE id between %(gte_id)s and %(lte_id)s""".format(source_table)
-    # # params = {"source_table": source_table, "gte_id": origin_id, "lte_id": last_id}
-    # params = {"gte_id": origin_id, "lte_id": last_id}
-    # try:
-    #     data = mypg.execute(query_sql, params)  # 获取当前时间范围内的数据
-    #     logger.info(
-    #         "获取爬取id为{0}到{1}的数据，数据量为{2}".format(origin_id, last_id, data.shape[0])
-    #     )
-    # except Exception as e:
-    #     logger.error("执行sql语句,从表{}中获取爬取id为{}到{}的数据失败 {}".format(source_table, origin_id, last_id, e))
-    # # 关闭数据库连接
-    # mypg.close()
 if __name__ == '__main__':
     q = {
         "task_id": '202090',  # 任务编号id

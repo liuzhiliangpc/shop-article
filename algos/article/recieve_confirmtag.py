@@ -12,6 +12,29 @@ class ConfirmTag:
         self.material_store = os.path.join(dir_path, 'materials/m_history.pkl')
 
     def material_recieve(self, query):
+        """
+        material_recieve 确认接收的组词编号与文章id，草稿箱内确认后的文章下次不会被请求到。
+        :param query:
+        {
+          "task_id": "564805",
+          "data": [{
+              "rowkey": "111111aadd",
+              "compound_words_id": "123",
+              "article_id": "123456"
+          }]
+        }
+        task_id 表示发文任务编号，字符串类型；
+        data中，compound_words_id为组合词编号、
+            rowkey为素材id ，均为字符串类型、
+            article_id为文章id
+        :return:
+        {
+          "retcode": 0,
+          "msg": "操作成功"
+        }
+        retcode 表示状态码信息，数值类型；
+        msg表示说明信息，字符串类型。
+        """
         df_task = pd.read_pickle(self.task_path)
         df_task['task_id'] = df_task.apply(lambda r: str(r.task_id), axis=1)
         # df_task = pd.read_pickle(r'C:\Users\baixing\Desktop\BX\build_request\algo_article\algos\cpni\tasks\task.pkl')

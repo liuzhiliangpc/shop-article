@@ -60,6 +60,12 @@ def run(request):
         r['retcode'] = 2
         r['msg'] = '发文任务超出单次额度范围'
         return r
+    # 检验组合词id是否有重复
+    if len(list(set([dic['compound_words_id'] for dic in event['data']]))) < len([dic['compound_words_id']
+                                                                                  for dic in event['data']]):
+        r['retcode'] = 3
+        r['msg'] = '组合词编号有重复'
+        return r
     for i in range(event['task_nums']):
         # 检查组合词中是否有AC
         if 'A' not in event['data'][i]['compound_words_type'] or 'C' not in event['data'][i]['compound_words_type']:

@@ -46,6 +46,12 @@ def run(request):
         r['retcode'] = 2
         r['msg'] = '组合词编号有重复'
         return r
+    # 检验article_id是否有重复
+    if len(list(set([dic['article_id'] for dic in event['data']]))) < len([dic['article_id']
+                                                                                  for dic in event['data']]):
+        r['retcode'] = 2
+        r['msg'] = 'article_id有重复'
+        return r
     logger.info('[素材确认接收] [任务编号:{}]'.format(str(event['task_id'])))
     # debug_option = event.get('debug', None)  # 调试模式默认为'dev'
     ret = CT.material_recieve(event)
@@ -57,10 +63,12 @@ if __name__ == "__main__":
         "task_id": "209678",
         "data": [{
                 "compound_words_id":"123",
-                "rowkey": "111111aadd"
+                "rowkey": "111111aadd",
+                "article_id": "112233"
         }, {
                 "compound_words_id":"123",
-                "rowkey": "111111222d"
+                "rowkey": "111111222d",
+                "article_id": "332211"
         }]
 }
     print(run(request=data))
