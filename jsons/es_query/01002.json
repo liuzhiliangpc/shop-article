@@ -1,0 +1,38 @@
+{
+    "_source": {
+    "includes": [
+      "rowkey",
+      "compound_words_id",
+      "article_id",
+      "title",
+      "content",
+      "description",
+      "keywords",
+      "image_oss_urls",
+      "keyword_layout_tag",
+      "is_used"
+    ]
+  },
+    "query": {
+        "bool":{
+            "must": [
+              {
+                "match":{
+                    "task_id": "%s"
+                }
+              },
+              {
+                "match": {
+                  "is_used": 0
+                }
+              },
+              {
+                "match": {
+                  "status": 0
+                }
+              }
+            ]
+        }
+	},
+  "size": 1000
+}

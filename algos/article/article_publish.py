@@ -25,8 +25,10 @@ def get_batch_es_data(indexs, query_id, paras, max_nums=1000):
     :param paras: 参数列表
     :param max_nums: 最大条数
     """
+
     @retry(stop_max_attempt_number=3)
     def es_retry():
+        es_back = None
         try:
             es_back = es.search_pro(
                 query_id=query_id,
@@ -85,7 +87,7 @@ def get_article(indexs, task_id, request_nums):
     datas_response = []   # 返回给业务的文档列表 去除_source之外的字段
     # 从新的dw_ai_article中，查询数据
     # 通过任务id查询得到的原始数据
-    datas = get_batch_es_data(indexs=indexs, query_id="02001", paras=[task_id])  # 任务id查询
+    datas = get_batch_es_data(indexs=indexs, query_id="01002", paras=[task_id])  # 任务id查询
     retcode = 1 # 缺省值
     if not datas:
         if check_task_id(task_id=task_id):
