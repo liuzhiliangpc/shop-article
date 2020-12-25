@@ -46,5 +46,5 @@ RUN mkdir -p /tmp/
 #容器启动命令
 #CMD python3 bootstrap.py
 CMD gunicorn -c gunicorn_config.py 'server.web:app'
-HEALTHCHECK --start-period=1m --interval=2m --timeout=20s --retries=3 CMD /bin/bash init.sh
+#HEALTHCHECK --start-period=1m --interval=2m --timeout=20s --retries=3 CMD /bin/bash init.sh
 
