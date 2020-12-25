@@ -29,9 +29,11 @@ elif mode == "prod":
     search_host = HOST
     insert_host = HOST
 elif mode == "prod_dev":
-    HOST = conf.getConf('elasticsearch', 'prod_dev_host')
-    search_host = conf.getConf('elasticsearch', 'dev_search_port')
-    insert_host = conf.getConf('elasticsearch', 'dev_insert_port')
+    ip = conf.getConf('elasticsearch', 'prod_dev_host')
+    search_port = conf.getConf('elasticsearch', 'dev_search_port')
+    insert_port = conf.getConf('elasticsearch', 'dev_insert_port')
+    search_host = "%s:%s" % (ip, search_port)
+    insert_host = "%s:%s" % (ip, insert_port)
 
 
 logger = logInit("ES_APP")
