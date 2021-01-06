@@ -12,17 +12,30 @@
 from elasticsearch import Elasticsearch
 import os
 import copy
-import datetime
 from tools.log import logInit
 import json
 import requests
+from config import conf
 
+mode = conf.getConf('elasticsearch', 'mode')
+if mode == "dev":
+    ip = conf.getConf('elasticsearch', 'dev_ip')
+    search_port = conf.getConf('elasticsearch', 'dev_search_port')
+    insert_port = conf.getConf('elasticsearch', 'dev_insert_port')
+    search_host = "%s:%s" % (ip, search_port)
+    insert_host = "%s:%s" % (ip, insert_port)
+elif mode == "prod":
+    HOST = conf.getConf('elasticsearch', 'prod_host')
+    search_host = HOST
+    insert_host = HOST
+elif mode == "prod_dev":
+    ip = conf.getConf('elasticsearch', 'prod_dev_host')
+    search_port = conf.getConf('elasticsearch', 'dev_search_port')
+    insert_port = conf.getConf('elasticsearch', 'dev_insert_port')
+    search_host = "%s:%s" % (ip, search_port)
+    insert_host = "%s:%s" % (ip, insert_port)
 
-ip = "172.30.2.14"
-search_port = "31206"
-insert_port = "31205"
 logger = logInit("ES_APP")
-
 # 方案一：利用架构部分开发的post接口
 class BXElasticSearch(object):
     def __init__(self):
@@ -35,7 +48,8 @@ class BXElasticSearch(object):
     def search(self, data):
         params = data
         r = requests.post(
-            url="http://%s:%s/api/es-query/queryByDsl" % (ip, search_port),
+            url="http://%s/api/es-query/queryByDsl" % (search_host),
+            # url="http://%s:%s/api/es-query/queryByDsl" % (ip, search_port),
             json=params,
             verify=False,
         )
@@ -45,7 +59,8 @@ class BXElasticSearch(object):
     def put(self, data):
         params = data
         r = requests.post(
-            url="http://%s:%s/api/es-write/add" % (ip, insert_port),
+            url="http://%s/api/es-write/add" % (insert_host),
+            # url="http://%s:%s/api/es-write/add" % (ip, insert_port),
             json=params,
             verify=False,
         )
@@ -55,7 +70,8 @@ class BXElasticSearch(object):
     def update(self, data):
         params = data
         r = requests.post(
-            url="http://%s:%s/api/es-write/update" % (ip, insert_port),
+            url="http://%s/api/es-write/update" % (insert_host),
+            # url="http://%s:%s/api/es-write/update" % (ip, insert_port),
             json=params,
             verify=False,
         )
@@ -65,7 +81,8 @@ class BXElasticSearch(object):
     def delete(self, data):
         params = data
         r = requests.post(
-            url="http://%s:%s/api/es-write/delete" % (ip, insert_port),
+            url="http://%s/api/es-write/delete" % (insert_host),
+            # url="http://%s:%s/api/es-write/delete" % (ip, insert_port),
             json=params,
             verify=False,
         )
@@ -221,7 +238,7 @@ if __name__ == "__main__":
 	"published_time": None,
 	"crawler_time": "2020-12-17 16:34:23",
 	"spider_time": "2020-12-18 19:48:36",
-	"rowkey": "0200539191531059d608efa1eb4332",
+	"rowkey": "0200539191123059d608efa1eb4332",
 	"crawler_rowkey": "",
 	"crawler_keywords": [],
 	"description": "",
@@ -255,11 +272,11 @@ if __name__ == "__main__":
 	"download_count": 0,
 	"is_used": 0
 }]
-    es.put_pro(indexs="dw_article", data=data2, id_field=idField)
+    # es.put_pro(indexs="dw_article", data=data2, id_field=idField)
 
     # 百姓接口数据更新
-    # data3 = [{"id": "test_6"}]
-    # es.update_pro(indexs="api_test", data=data3, id_field=idField)
+    # data3 = [{"download_count": 1, "rowkey": "01008581367470ff5507afdc28ac77"}]
+    # es.update_pro(indexs="dw_ai_article", data=data3, id_field="rowkey")
 
     # 百姓接口数据删除
     # data4 = [{"id": "test_6"}]

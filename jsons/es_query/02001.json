@@ -1,0 +1,11 @@
+{
+	"query": {
+		"bool": {
+			"must": [{
+				"match": {
+					"article_id": "%s"
+				}
+			}]
+		}
+	}
+}

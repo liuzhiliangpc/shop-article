@@ -30,6 +30,7 @@ WORKDIR /
 #安装yum
 #RUN yum -y update
 #RUN yum -y install gcc-c++ python-devel.x86_64 cyrus-sasl-devel.x86_64
+# centos 中pip install psycopg2会缺少pg_config，pg_config在postgresql-devel
 
 #更新pip镜像源
 RUN pip3 install pip -U
@@ -45,5 +46,5 @@ RUN mkdir -p /tmp/
 #容器启动命令
 #CMD python3 bootstrap.py
 CMD gunicorn -c gunicorn_config.py 'server.web:app'
-HEALTHCHECK --start-period=1m --interval=2m --timeout=20s --retries=3 CMD /bin/bash init.sh
+#HEALTHCHECK --start-period=1m --interval=2m --timeout=20s --retries=3 CMD /bin/bash init.sh
 

@@ -7,7 +7,7 @@ import datetime
 import numpy as np
 from datetime import datetime, timedelta
 from retrying import retry
-from milvus import IndexType, MetricType, Status
+# from milvus import IndexType, MetricType, Status
 from core.core import logger
 
 def filter_text(text):
