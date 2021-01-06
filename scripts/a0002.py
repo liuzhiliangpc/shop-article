@@ -27,7 +27,6 @@ def run(request):
         r['msg'] = '检查数据类型'
         return r
     logger.info('[获取素材请求数据] [每批返回数据:{}条]'.format(str(event['batch_size'])))
-    # debug_option = event.get('debug', None)  # 调试模式默认为'dev'
     data_response, remain_now_nums, retcode, msg = get_article(indexs="dw_ai_article", task_id=event['task_id'],
                                                           request_nums=event['batch_size'])
     # 返回的消息体

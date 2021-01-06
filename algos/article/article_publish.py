@@ -14,8 +14,17 @@ from tools.baixing_elasticsearch import BXElasticSearch
 from retrying import retry
 from tools.mypsycopg2 import Mypsycopg2
 
+from config import conf
+
+postgresql_mode = conf.getConf("postgresql", "mode")
+source_table = "shop_task_dev" # 缺省值
+
+if postgresql_mode == "prod_dev":
+    source_table = conf.getConf("postgresql", "dev_shop_tasks")
+elif postgresql_mode == "prod":
+    source_table = conf.getConf("postgresql", "prod_shop_tasks")
+
 es = BXElasticSearch()  # 百姓es实例
-mypg = Mypsycopg2() # pg实例
 
 def get_batch_es_data(indexs, query_id, paras, max_nums=1000):
     """
@@ -51,14 +60,15 @@ def get_batch_es_data(indexs, query_id, paras, max_nums=1000):
 
 def get_unfinished_tasks_table():
     # 获取未完成任务
-    query_shop_task_sql = """SELECT * FROM shop_tasks WHERE status <> 0 or status is NULL ORDER BY task_create_time ASC"""
+    mypg = Mypsycopg2()  # pg实例
+    query_shop_task_sql = """SELECT * FROM {} WHERE status <> 0 or status is NULL ORDER BY task_create_time ASC""".format(source_table)
     try:
         data_df = mypg.execute(query_shop_task_sql)
         logger.info("从表shop_task中获取未完成任务信息")
     except Exception as e:
         logger.error("执行sql语句,从表shop_tasks中获取未完成任务信息失败 {}".format(e))
     # # 关闭数据库连接
-    # mypg.close()
+    mypg.close()
     logger.info("未完成任务总数为:{}".format(data_df.shape[0]))
     return data_df
 
@@ -85,6 +95,8 @@ def get_article(indexs, task_id, request_nums):
     remain_now_nums = 0   # 剩余文档数目，含本次
     datas_not_used = []   # 未被使用的文档列表
     datas_response = []   # 返回给业务的文档列表 去除_source之外的字段
+    #
+
     # 从新的dw_ai_article中，查询数据
     # 通过任务id查询得到的原始数据
     datas = get_batch_es_data(indexs=indexs, query_id="01002", paras=[task_id])  # 任务id查询

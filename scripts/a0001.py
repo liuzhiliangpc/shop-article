@@ -13,8 +13,17 @@ import time
 from tools.mypsycopg2 import Mypsycopg2
 from core.core import logger
 import json
+from config import conf
 
-def run(request, source_table="shop_tasks"):
+postgresql_mode = conf.getConf("postgresql", "mode")
+source_table = "shop_task_dev" # 缺省值
+
+if postgresql_mode == "prod_dev":
+    source_table = conf.getConf("postgresql", "dev_shop_tasks")
+elif postgresql_mode == "prod":
+    source_table = conf.getConf("postgresql", "prod_shop_tasks")
+# print(source_table)
+def run(request):
     """
     校验请求功能
     :param request: 请求参数
@@ -131,8 +140,8 @@ def save_request_data(source_table, data):
     mypg = Mypsycopg2()
     sql = """select * from {}""".format(source_table)
     df_task = mypg.execute(sql)
-    print("df_task_his:")
-    print(df_task)
+    # print("df_task_his:")
+    # print(df_task)
     mypg.close()
     if df_task.shape[0] > 0:
         # 检查任务编号是否重复
@@ -140,8 +149,8 @@ def save_request_data(source_table, data):
             return '任务编号重复'
     # 若无误则存入数据库中
     back_df = insert_task_data(data, source_table)
-    print("back_df:")
-    print(back_df)
+    # print("back_df:")
+    # print(back_df)
     if back_df.shape[0] - df_task.shape[0] == 1:
         return '操作成功'
     else:
@@ -149,19 +158,19 @@ def save_request_data(source_table, data):
 # 向数据库中插数
 
 
-def insert_task_data(params, source):
+def insert_task_data(params, source_table):
     mypg = Mypsycopg2()
-    sql = """select * from {}""".format(source)
+    sql = """select * from {}""".format(source_table)
     params['shop_task_json'] = json.dumps(params, ensure_ascii=False)
     params['status'] = 1
     insert_sql = """INSERT INTO {} (task_id, task_create_time, business_category, task_nums, shop_task_json, status, 
     industry_l2) VALUES (%(task_id)s, %(task_create_time)s, %(business_category)s, %(task_nums)s, %(shop_task_json)s, %(status)s, 
-    %(industry_l2)s)""".format(source)
+    %(industry_l2)s)""".format(source_table)
     try:
         mypg.execute(insert_sql, params)
-        logger.info("向表{}中更新最新爬虫数据".format(source))
+        logger.info("向表{}中更新最新爬虫数据".format(source_table))
     except Exception as e:
-        logger.error("执行sql语句,向表{}中更新最新爬虫数据i失败 {}".format(source, e))
+        logger.error("执行sql语句,向表{}中更新最新爬虫数据i失败 {}".format(source_table, e))
     mypg.close()
     mypg = Mypsycopg2()
     df = mypg.execute(sql)

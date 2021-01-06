@@ -35,7 +35,6 @@ elif mode == "prod_dev":
     search_host = "%s:%s" % (ip, search_port)
     insert_host = "%s:%s" % (ip, insert_port)
 
-
 logger = logInit("ES_APP")
 # 方案一：利用架构部分开发的post接口
 class BXElasticSearch(object):
