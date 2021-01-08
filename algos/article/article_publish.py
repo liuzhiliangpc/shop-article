@@ -61,7 +61,9 @@ def get_batch_es_data(indexs, query_id, paras, max_nums=1000):
 def get_unfinished_tasks_table():
     # 获取未完成任务
     mypg = Mypsycopg2()  # pg实例
-    query_shop_task_sql = """SELECT * FROM {} WHERE status <> 0 or status is NULL ORDER BY task_create_time ASC""".format(source_table)
+    # TODO 后面pg库移到阿里云，改成先查数据库status,只有status为2的，才执行es查询。
+    # query_shop_task_sql = """SELECT * FROM {} WHERE status <> 0 or status is NULL ORDER BY task_create_time ASC""".format(source_table)
+    query_shop_task_sql = """SELECT * FROM {} WHERE status not in (0,4) or status is NULL ORDER BY task_create_time ASC""".format(source_table)
     try:
         data_df = mypg.execute(query_shop_task_sql)
         logger.info("从表shop_task中获取未完成任务信息")
