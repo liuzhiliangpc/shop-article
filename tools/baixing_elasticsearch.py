@@ -7,7 +7,7 @@
 @software: pycharm
 @file: baixing_elasticsearch.py
 @time: 2020/12/14 20:52
-@desc: 百姓POST方式读取ElasticSearch接口，最新版本时间
+@desc: 百姓POST方式读取ElasticSearch接口，最新版本时间2021-01-12
 """
 from elasticsearch import Elasticsearch
 import os
@@ -46,6 +46,7 @@ class BXElasticSearch(object):
         )
 
     def search(self, data):
+        # print(data)
         params = data
         r = requests.post(
             url="http://%s/api/es-query/queryByDsl" % (search_host),
@@ -116,6 +117,7 @@ class BXElasticSearch(object):
         query = {"index": indexs, "docs": data, "idField": id_field}
         status = self.put(data=query)
         print(status)
+        return status
 
     def update_pro(self, indexs, data, id_field):
         if not indexs:
@@ -126,6 +128,7 @@ class BXElasticSearch(object):
         query = {"index": indexs, "docs": data, "idField": id_field}
         status = self.update(data=query)
         print(status)
+        return status
 
     def delete_pro(self, indexs, data, id_field):
         if not indexs:
@@ -136,6 +139,7 @@ class BXElasticSearch(object):
         query = {"index": indexs, "docs": data, "idField": id_field}
         status = self.delete(data=query)
         print(status)
+        return status
 
     def __loadQuery(self, index, query_id, paras=()):
         q_file = os.path.join(self.query_dir, "%s.json" % query_id)
@@ -145,47 +149,97 @@ class BXElasticSearch(object):
                 q = q + line.strip()
         q = q % paras  # 核心语句占位符替换
         query_json = json.dumps(q, ensure_ascii=False)  # dsl部分转换为json字符串
+        # print(query_json)
         query = """{"index": "%s","dsl": %s, "routes":"?timeout=120s"}""" % (
             index,
             query_json,
         )  # 替换占位符
         query = json.loads(query)
+        # print(query)
         return query
 
 
 if __name__ == "__main__":
     pass
-    # 官方接口，查询测试一：可再封装一层
-    es = Elasticsearch(hosts="172.30.1.98:9200")
-    query = """{"query":{
-        "match_all": {}
-    }
-    }"""
-    ret = es.search(index="cat_material_test_20200618", body=query, request_timeout=120)
-    query_insert = {
-        "category": "fangwuweixiu",
-        "content": "lzl换气扇是家里很重要的一个设施",
-        "id": "5f72eb8602ec996bc67d6000",
-        "title": "lzl换气扇的种类有哪些 排气扇怎么安装",
-    }
-    # 官方执行插入成功
-    # es.index(index="cat_material_test_20200618", id="5f72eb8602ec996bc67d6000", body=query_insert, request_timeout=120)
-
-    del es
+    # # 官方接口，查询测试一：可再封装一层
+    # es = Elasticsearch(hosts="172.30.1.98:9200")
+    # query = """{"query":{
+    #     "match_all": {}
+    # }
+    # }"""
+    # ret = es.search(index="cat_material_test_20200618", body=query, request_timeout=120)
+    # query_insert = {
+    #     "category": "fangwuweixiu",
+    #     "content": "lzl换气扇是家里很重要的一个设施",
+    #     "id": "5f72eb8602ec996bc67d6000",
+    #     "title": "lzl换气扇的种类有哪些 排气扇怎么安装",
+    # }
+    # # 官方执行插入成功
+    # # es.index(index="cat_material_test_20200618", id="5f72eb8602ec996bc67d6000", body=query_insert, request_timeout=120)
+    #
+    # del es
     # print(ret)
     # 百姓接口，查询测试二：
     es = BXElasticSearch()
-    # query_dsl = """{"query":{
-    #     "match_all": {}
-    # }
-    # }"""  # dsl部分后续也用占位符
-    # query_json = json.dumps(query_dsl, ensure_ascii=False) # dsl部分转换为json字符串
-    # print(query_json)
-    # query = """{"index": "ad_uid","dsl": %s, "routes":"?timeout=120s"}"""%(query_json) # 替换占位符
+    query_dsl = """{"query":{
+        "match_all": {}
+    }
+    }"""  # dsl部分后续也用占位符
+    query_dsl = """
+    {
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "query_string": {
+            "query": "KTV",
+            "type": "phrase",
+            "fields": [
+              "title"
+            ]
+          }
+        },
+        {"match": {
+            "status": 0
+          }
+        },
+        {
+          "match": {
+            "download_count": 0
+          }
+        },
+        {
+            "match":{
+                "is_used": 0
+            }
+        },
+        {
+          "match": {
+            "business_category": "B2C"
+          }
+        },
+        {
+          "match": {
+            "crawler_rowkey": ""
+          }
+        }
+      ]
+    }
+  },
+  "size": 10
+}
+    """
+    query_json = json.dumps(query_dsl, ensure_ascii=False) # dsl部分转换为json字符串
+
+    print(query_json)
+    query = """{"index": "dw_article","dsl": %s, "routes":"?timeout=120s"}"""%(query_json) # 替换占位符
+    print(query)
+    query = json.loads(query)
+    print(query)
+
+    # query = {"index": "dw_article","dsl": query_json, "routes":"?timeout=120s"}
     # print(query)
-    # query = json.loads(query)
-    # print(query)
-    # print(es.search(query))
+    print(es.search(query))
 
     # 上述为百姓接口search_pro功能
     # print(es.search_pro(query_id="00100", paras=["match_all"]))
@@ -206,16 +260,18 @@ if __name__ == "__main__":
             if count > 0:
                 datas = es_response["hits"]["hits"][0]["_source"]  # 取匹配的第一条数据
         return datas
-    data_back = get_es_data("01006499790470d104384280346b1d")
-    print(data_back.get("content"))
-    print(type(data_back))
+    # data_back = get_es_data("01006499790470d104384280346b1d")
+    data_back = get_es_data("021053866831407d4b23e37a62fbff")
+    # print(data_back.get("content"))
+    # print(type(data_back))
 
 
     # 百姓接口数据插入
     data1 = [{"id": "test_5"}]
     idField = "id"
     query = {"index": "dw_article", "docs": data1, "idField": idField}
-    print(query)
+    # print(query)
+
     # status = es.put(data=query)
     # print(status)
     # 上述为百姓接口put_pro功能
@@ -276,8 +332,13 @@ if __name__ == "__main__":
 
     # 百姓接口数据更新
     # data3 = [{"download_count": 1, "rowkey": "01008581367470ff5507afdc28ac77"}]
-    # es.update_pro(indexs="dw_ai_article", data=data3, id_field="rowkey")
+    # es.update_pro(indexs="dw_article", data=data3, id_field="rowkey")
 
     # 百姓接口数据删除
-    # data4 = [{"id": "test_6"}]
-    # es.delete_pro(indexs="api_test", data=data4, id_field=idField)
+    # data4 = [{"article_id": "01105387945260d6ec9079e2d62d8f"}, {"article_id": "011053879452606b45362717378058"}, {"article_id": "011053879452603f8b095b7d978bc8"}]
+    data4 = [{"article_id": "021053929344501339ecfcc4915bf8"}, {"article_id": "02105392934450a174b2ec4bbe4e22"}, {"article_id": "02105392934450270528c884c526cf"}, {"article_id": "02105392934450fd22dbbc0f47e33c"},
+     {"article_id": "0210539293445047083e83b078fd3d"}, {"article_id": "0210539293445003459258ae8e8e73"}, {"article_id": "02105392934450419a8042d10750a0"}, {"article_id": "021053929344505cbc8ca1db6261b5"}, {"article_id": "021053929344507a2d3e920547dc0c"}, {"article_id": "02105392934450c0036703f3db792c"}]
+    es.delete_pro(indexs="dw_ai_article", data=data4, id_field="article_id")
+
+    # curl http://api.baixing.com.cn/api/es-query/queryByDsl -X POST -d '{'index': 'dw_article', 'dsl': '{"query": {"bool": {"must": [{"query_string": {"query": "KTV","type": "phrase","fields": ["title"]}},{"match": {"status": 0}},{"match": {"download_count": 0}},{"match":{"is_used": 0}},{"match": {"business_category": "B2C"}},{"match": {"crawler_rowkey": ""}}]}},"size": 10}', 'routes': '?timeout=120s'}' --header "Content-Type: application/json"
+
