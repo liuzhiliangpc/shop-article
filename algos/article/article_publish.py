@@ -56,17 +56,17 @@ def check_task_id(task_id):
     """
     # 读取历史数据
     mypg = Mypsycopg2()
-    sql = """select task_id, status from {} where task_id = %(task_id)s and task_id <> 4 limit 3""".format(
+    sql = """select task_id, status from {} where task_id = %(task_id)s and status <> 4 limit 3""".format(
         source_table
     )
     params = {"task_id": task_id}
     try:
         df_task = mypg.execute(sql, params)
-        logger.info("[素材请求] [查询表{}中task_id:{}信息]".format(source_table, data["task_id"]))
+        logger.info("[素材请求] [查询表{}中task_id:{}信息]".format(source_table, task_id))
     except Exception as e:
         logger.error(
             "[素材请求] [执行sql语句，查询表{}task_id:{}失败{}]".format(
-                source_table, data["task_id"], e
+                source_table, task_id, e
             )
         )
     mypg.close()

@@ -47,7 +47,7 @@ def run(request):
 
 if __name__ == "__main__":
     data = {
-        "task_id": "18",  # 任务编号id
+        "task_id": "20210121",  # 任务编号id
         "batch_size": 3,  # 单批次次请求1条数量
     }
     run(request=data)
