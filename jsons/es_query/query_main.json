@@ -1,0 +1,61 @@
+{
+  "_source": {
+    "includes": [
+      "rowkey",
+      "title",
+      "content"
+    ]
+  },
+  "query": {
+    "bool": {
+      "must": [{
+        "query_string": {
+          "query": "%s",
+          "type": "phrase",
+          "fields": [
+            "title"
+          ]
+        }
+      }],
+      "filter": [%s
+        {
+          "term": {
+            "status": 0
+          }
+        },
+        {
+          "range": {
+            "download_count": {
+              "gte": 0,
+              "lte": %d
+            }
+          }
+        },
+        {
+          "term": {
+            "is_used": 0
+          }
+        },
+        {
+          "terms": {
+            "business_category": %s
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "terms": {
+            "rowkey": %s
+          }
+        },
+        {
+          "terms": {
+            "vector_id": %s
+          }
+        }
+      ]
+    }
+  },
+  "size": %d,
+  "seq_no_primary_term": true
+}

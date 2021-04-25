@@ -1,0 +1,34 @@
+{
+  "_source": {
+    "includes": [
+      "rowkey",
+      "compound_words_id",
+      "article_id",
+      "title",
+      "content",
+      "description",
+      "keywords",
+      "image_oss_urls",
+      "keyword_layout_tag",
+      "is_used"
+    ]
+  },
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "query_string": {
+            "query": "%s",
+            "type": "phrase",
+            "fields": [
+              "title"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "size": 1,
+  "version": true,
+  "seq_no_primary_term": true
+}

@@ -7,11 +7,12 @@
 @software: pycharm
 @file: baixing_elasticsearch.py
 @time: 2020/12/14 20:52
-@desc: 百姓POST方式读取ElasticSearch接口，最新版本时间2021-01-12
+@desc: 百姓POST方式读取ElasticSearch接口，最新版本时间2021-04-19
+TODO update_by_query需写接口，后续接异步需写接口
 """
-from elasticsearch import Elasticsearch
+# from elasticsearch import Elasticsearch
 import os
-import copy
+# import copy
 from tools.log import logInit
 import json
 import requests
@@ -24,6 +25,7 @@ if mode == "dev":
     insert_port = conf.getConf('elasticsearch', 'dev_insert_port')
     search_host = "%s:%s" % (ip, search_port)
     insert_host = "%s:%s" % (ip, insert_port)
+    print(insert_host)
 elif mode == "prod":
     HOST = conf.getConf('elasticsearch', 'prod_host')
     search_host = HOST
@@ -46,11 +48,10 @@ class BXElasticSearch(object):
         )
 
     def search(self, data):
-        # print(data)
+        """查询操作基础函数""" # TODO 基于选项合并为一个基础函数
         params = data
         r = requests.post(
             url="http://%s/api/es-query/queryByDsl" % (search_host),
-            # url="http://%s:%s/api/es-query/queryByDsl" % (ip, search_port),
             json=params,
             verify=False,
         )
@@ -58,10 +59,10 @@ class BXElasticSearch(object):
         return ret
 
     def put(self, data):
+        """插入操作基础函数"""
         params = data
         r = requests.post(
             url="http://%s/api/es-write/add" % (insert_host),
-            # url="http://%s:%s/api/es-write/add" % (ip, insert_port),
             json=params,
             verify=False,
         )
@@ -69,10 +70,10 @@ class BXElasticSearch(object):
         return ret
 
     def update(self, data):
+        """更新操作基础函数"""
         params = data
         r = requests.post(
             url="http://%s/api/es-write/update" % (insert_host),
-            # url="http://%s:%s/api/es-write/update" % (ip, insert_port),
             json=params,
             verify=False,
         )
@@ -80,10 +81,21 @@ class BXElasticSearch(object):
         return ret
 
     def delete(self, data):
+        """删除操作基础函数"""
         params = data
         r = requests.post(
             url="http://%s/api/es-write/delete" % (insert_host),
-            # url="http://%s:%s/api/es-write/delete" % (ip, insert_port),
+            json=params,
+            verify=False,
+        )
+        ret = json.loads(r.text)
+        return ret
+
+    def update_by_query(self, data):
+        """查询更新操作基础函数"""
+        params = data
+        r = requests.post(
+            url="http://%s/api/es-write/updateByQuery" % (insert_host),
             json=params,
             verify=False,
         )
@@ -116,7 +128,7 @@ class BXElasticSearch(object):
 
         query = {"index": indexs, "docs": data, "idField": id_field}
         status = self.put(data=query)
-        print(status)
+        logger.info(status)
         return status
 
     def update_pro(self, indexs, data, id_field):
@@ -127,7 +139,18 @@ class BXElasticSearch(object):
 
         query = {"index": indexs, "docs": data, "idField": id_field}
         status = self.update(data=query)
-        print(status)
+        logger.info(status)
+        return status
+
+    def update_version(self, indexs, data,id_field, _primary_term, _seq_no):
+        if not indexs:
+            indexs = self.__index
+        if not id_field:
+            id_field = self.__id_field
+
+        query = {"index": indexs, "docs": data, "idField": id_field, "primaryTerm": _primary_term, "seqNo": _seq_no}
+        status = self.update(data=query)
+        logger.info(status)
         return status
 
     def delete_pro(self, indexs, data, id_field):
@@ -138,10 +161,11 @@ class BXElasticSearch(object):
 
         query = {"index": indexs, "docs": data, "idField": id_field}
         status = self.delete(data=query)
-        print(status)
+        logger.info(status)
         return status
 
     def __loadQuery(self, index, query_id, paras=()):
+        """支持search_pro使用，后续需和__loadQuery_scroll合并"""
         q_file = os.path.join(self.query_dir, "%s.json" % query_id)
         q = ""
         with open(q_file, "r", encoding="utf-8") as fin:
@@ -154,9 +178,85 @@ class BXElasticSearch(object):
             index,
             query_json,
         )  # 替换占位符
+        # print(query)
         query = json.loads(query)
         # print(query)
         return query
+
+    def update_by_query_pro(self, query_id, paras=[], indexs=None):
+        """查询更新高级接口"""
+        if not indexs:
+            indexs = self.__index
+        query_id = str(query_id)
+        if paras and type(paras) == type([]):
+            paras = tuple(paras)
+
+        try:
+            query_json = self.__loadQuery_scroll(query_id=query_id, paras=paras)
+        except Exception as e:
+            logger.warning("Load update_by_query file error. Check file %s.json; %s" % (query_id, e))
+            return []
+        # 复杂的还支持scroll默认5min、scroll_size默认1000滚动大小等,timeout不设置默认是1min。
+        query = """{"index": "%s","dsl": %s, "routes":"?timeout=120s"}""" % (
+            indexs,
+            query_json,
+        )  # 替换占位符
+        query = json.loads(query)
+        ret = self.update_by_query(data=query)
+        return ret
+
+    def search_scroll_pro(self, query_id, paras=[], indexs=None, scroll=False):
+        # 带游标es查询接口，默认不带游标
+        if not indexs:
+            indexs = self.__index
+        query_id = str(query_id)
+        if paras and type(paras) == type([]):
+            paras = tuple(paras)
+
+        try:
+            query_json = self.__loadQuery_scroll(query_id=query_id, paras=paras)
+        except Exception as e:
+            logger.warning(
+                "Load query file error. Check file %s.json; %s" % (query_id, e)
+            )
+            return []
+        # 不使用游标方式
+        if not scroll:
+            query = """{"index": "%s","dsl": %s, "routes":"?timeout=120s"}""" % (
+                indexs,
+                query_json,
+            )  # 替换占位符
+        # 使用游标方式
+        else:
+            query = """{"index": "%s","dsl": %s, "routes":"?timeout=120s&scroll=10m"}""" % (
+                indexs,
+                query_json,
+            )  # 替换占位符
+        query = json.loads(query)
+        ret = self.search(data=query)
+        return ret
+
+    def scroll(self, indexs, scroll_id):
+        # 通过游标方式查询，返回的数据中需解析scroll_id，以便后面使用，首次使用先用search_scroll_pro，后用scroll命令
+        query = """{"index": "%s","dsl": "{}", "routes":"?scroll=5m", "scrollId":"%s"}""" % (
+            indexs,
+            scroll_id,
+        )  # 替换占位符
+        query = json.loads(query)
+        ret = self.search(data=query)
+        return ret
+
+    def __loadQuery_scroll(self, query_id, paras=()):
+        """供search_scroll_pro使用，后面补充对update_by_query支持"""
+        q_file = os.path.join(self.query_dir, "%s.json" % query_id)
+        q = ""
+        with open(q_file, "r", encoding="utf-8") as fin:
+            for line in fin:
+                q = q + line.strip()
+        q = q % paras  # 核心语句占位符替换
+        query_json = json.dumps(q, ensure_ascii=False)  # dsl部分转换为json字符串
+        return query_json
+
 
 
 if __name__ == "__main__":
@@ -185,64 +285,31 @@ if __name__ == "__main__":
         "match_all": {}
     }
     }"""  # dsl部分后续也用占位符
-    query_dsl = """
-    {
-  "query": {
-    "bool": {
-      "must": [
-        {
-          "query_string": {
-            "query": "KTV",
-            "type": "phrase",
-            "fields": [
-              "title"
-            ]
-          }
-        },
-        {"match": {
-            "status": 0
-          }
-        },
-        {
-          "match": {
-            "download_count": 0
-          }
-        },
-        {
-            "match":{
-                "is_used": 0
-            }
-        },
-        {
-          "match": {
-            "business_category": "B2C"
-          }
-        },
-        {
-          "match": {
-            "crawler_rowkey": ""
-          }
-        }
-      ]
-    }
-  },
-  "size": 10
-}
-    """
     query_json = json.dumps(query_dsl, ensure_ascii=False) # dsl部分转换为json字符串
 
-    print(query_json)
+    # print(query_json)
     query = """{"index": "dw_article","dsl": %s, "routes":"?timeout=120s"}"""%(query_json) # 替换占位符
-    print(query)
     query = json.loads(query)
-    print(query)
-
-    # query = {"index": "dw_article","dsl": query_json, "routes":"?timeout=120s"}
     # print(query)
-    print(es.search(query))
+    # print(es.search(query))
 
     # 上述为百姓接口search_pro功能
     # print(es.search_pro(query_id="00100", paras=["match_all"]))
+    res_scroll = es.search_scroll_pro(query_id="test", paras=["KTV"], indexs="dw_article", scroll=True)
+    print(res_scroll)
+    scroll_flag = res_scroll.get("scrollId")
+    print("-------------------------------------------")
+    print(scroll_flag)
+    res_scroll_batch2 = es.scroll(indexs="dw_article", scroll_id=scroll_flag)
+    # query = """{"index": "dw_article","dsl": "{}", "routes":"?scroll=5m", "scrollId":"%s"}""" % (
+    #     scroll_flag,
+    # )  # 替换占位符
+    # query = json.loads(query)
+    # ret = es.search(data=query)
+    print("-------------------------------------------")
+    # print(ret)
+    print(res_scroll_batch2)
+
 
     def get_es_data(query_str):
         # 获取ES数据库数据
@@ -260,30 +327,10 @@ if __name__ == "__main__":
             if count > 0:
                 datas = es_response["hits"]["hits"][0]["_source"]  # 取匹配的第一条数据
         return datas
-    # data_back = get_es_data("01006499790470d104384280346b1d")
     data_back = get_es_data("021053866831407d4b23e37a62fbff")
     # print(data_back.get("content"))
-    # print(type(data_back))
 
-
-    # 百姓接口数据插入
-    data1 = [{"id": "test_5"}]
-    idField = "id"
-    query = {"index": "dw_article", "docs": data1, "idField": idField}
-    # print(query)
-
-    # status = es.put(data=query)
-    # print(status)
-    # 上述为百姓接口put_pro功能
-    # data2 = [{"id": "test_6"}]
-    # es.put_pro(indexs="api_test", data=data2, id_field=idField)
-    data2 = [{
-        "category": "fangwuweixiu",
-        "content": "lzl换气扇是家里很重要的一个设施",
-        "id": "5f72eb8602ec996bc67d6000",
-        "title": "lzl换气扇的种类有哪些 排气扇怎么安装",
-    }]
-
+    # 数据插入（旧数据完全替换方式）
     idField = "rowkey"
     data2 = [{
 	"vector_id": None,
@@ -330,15 +377,20 @@ if __name__ == "__main__":
 }]
     # es.put_pro(indexs="dw_article", data=data2, id_field=idField)
 
-    # 百姓接口数据更新
-    # data3 = [{"download_count": 1, "rowkey": "01008581367470ff5507afdc28ac77"}]
+    # 不带版本更新
+    data3 = [{"download_count": 1, "rowkey": "01008581367470ff5507afdc28ac77"}]
     # es.update_pro(indexs="dw_article", data=data3, id_field="rowkey")
 
+    # 带版本更新
+    data4 = [{"download_count": 1, "rowkey": "0100719438947046f899062c8cd395"}]
+    # es.update_version(indexs="dw_article", data=data5, id_field="rowkey", _primary_term=13, _seq_no=90607)
+
     # 百姓接口数据删除
-    # data4 = [{"article_id": "01105387945260d6ec9079e2d62d8f"}, {"article_id": "011053879452606b45362717378058"}, {"article_id": "011053879452603f8b095b7d978bc8"}]
-    data4 = [{"article_id": "021053929344501339ecfcc4915bf8"}, {"article_id": "02105392934450a174b2ec4bbe4e22"}, {"article_id": "02105392934450270528c884c526cf"}, {"article_id": "02105392934450fd22dbbc0f47e33c"},
-     {"article_id": "0210539293445047083e83b078fd3d"}, {"article_id": "0210539293445003459258ae8e8e73"}, {"article_id": "02105392934450419a8042d10750a0"}, {"article_id": "021053929344505cbc8ca1db6261b5"}, {"article_id": "021053929344507a2d3e920547dc0c"}, {"article_id": "02105392934450c0036703f3db792c"}]
-    es.delete_pro(indexs="dw_ai_article", data=data4, id_field="article_id")
+    data5= [{"article_id": "01105387945260d6ec9079e2d62d8f"}, {"article_id": "011053879452606b45362717378058"}, {"article_id": "011053879452603f8b095b7d978bc8"}]
+    # es.delete_pro(indexs="dw_ai_article", data=data4, id_field="article_id")
 
-    # curl http://api.baixing.com.cn/api/es-query/queryByDsl -X POST -d '{'index': 'dw_article', 'dsl': '{"query": {"bool": {"must": [{"query_string": {"query": "KTV","type": "phrase","fields": ["title"]}},{"match": {"status": 0}},{"match": {"download_count": 0}},{"match":{"is_used": 0}},{"match": {"business_category": "B2C"}},{"match": {"crawler_rowkey": ""}}]}},"size": 10}', 'routes': '?timeout=120s'}' --header "Content-Type: application/json"
-
+    # 查询更新操作
+    rowkey_list_str = json.dumps(["200"], ensure_ascii=False)
+    data6 = es.update_by_query_pro(query_id="update_by_query_test", paras=[16, rowkey_list_str], indexs="dw_ai_article")
+    print(data6)
+    # curl --location --request POST 'http://api.baixing.com.cn/api/es-query/queryByDsl?timeout=3s' --header 'Content-Type: application/json' --data-raw '{    "index": "dw_article",    "dsl": "{\"query\":{\"term\":{\"rowkey\":\"02105296927100823e3b122b0ec457\"}},\"from\":0,\"size\":20}",    "routes": "?timeout=3s"}'

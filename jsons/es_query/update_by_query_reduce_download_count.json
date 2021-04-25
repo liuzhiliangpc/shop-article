@@ -1,0 +1,20 @@
+{
+  "script": {
+    "source": "if (ctx._source.download_count >= params.download_count_gte) {ctx._source.download_count--}",
+    "lang": "painless",
+    "params": {
+      "download_count_gte": 1
+    }
+  },
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "terms": {
+            "rowkey": %s
+          }
+        }
+      ]
+    }
+  }
+}

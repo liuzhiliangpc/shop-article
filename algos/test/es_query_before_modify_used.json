@@ -1,0 +1,34 @@
+{
+  "_source": {
+    "includes": [
+      "rowkey",
+      "vector_id"
+    ]
+  },
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "term": {
+            "is_used": 0
+          }
+        },
+        {
+          "terms": {
+            "vector_id": %s
+          }
+        },
+        {
+          "range": {
+            "download_count": {
+              "gt": 0
+            }
+          }
+        }
+      ]
+    }
+  },
+  "size": 1000
+}
+
+

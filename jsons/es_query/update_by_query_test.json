@@ -1,0 +1,20 @@
+{
+  "script": {
+    "source": "if (ctx._source.is_used < params.download_count_lt) {ctx._source.is_used++}",
+    "lang": "painless",
+    "params": {
+      "download_count_lt": %d
+    }
+  },
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "terms": {
+            "task_id": %s
+          }
+        }
+      ]
+    }
+  }
+}

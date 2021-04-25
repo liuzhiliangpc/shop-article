@@ -1,0 +1,22 @@
+{
+  "_source": {
+    "includes": [
+      "rowkey",
+      "title",
+      "content"
+    ]
+  },
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "terms": {
+            "rowkey": %s
+          }
+        }
+      ]
+    }
+  },
+  "size": %d,
+  "seq_no_primary_term": true
+}

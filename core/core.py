@@ -32,3 +32,4 @@ class BackEndCore(object):
         logger.info('Run module')
         result = _module.run(request)
         return result
+
