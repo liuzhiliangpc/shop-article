@@ -9,8 +9,8 @@
 @time: 2021/4/2 15:59
 @desc: pymilvus更新到1.0.1
        milvus更新到1.0.0
-       与0.10.4下部分函数与差异，最近更新时间2021年4月20日
-       TODO delete_by_id 需要完善 返回项
+       与0.10.4下部分函数与差异，最近更新时间2021年4月25日
+       TODO delete_by_id 需要完善 返回项，后续改为异步
 """
 from typing import Any, Tuple, List, Dict  # 类型支持
 import numpy as np
@@ -24,10 +24,8 @@ class MyMilvus(object):
     def __init__(self):
         self._host = conf.getConf('milvus_server', 'HOST')
         self._port = conf.getConf('milvus_server', 'PORT')
-        print(self._host)
-        print(self._port)
-        self.milvus_device = Milvus(uri='tcp://localhost:19530')
-        # self.milvus_device = Milvus(host=self._host, port=self._port)
+        self._handler = conf.getConf('milvus_server', 'HANDLER')
+        self.milvus_device = Milvus(host=self._host, port=self._port, handler=self._handler)
 
     @validate_arguments
     def create_collection(self, collection_name: str, dimension: int, index_file_size: int = 1024, metric_type: MetricType = MetricType.L2, index_type: IndexType = IndexType.FLAT, is_rebuild: bool = False, timeout: int = 30, index_param: Any = None) -> None:

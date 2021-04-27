@@ -11,19 +11,16 @@
 """
 
 import time
-from init import celery
+from init import celery, es, mymilvus, red_lock_factory
 
 from tools.log import logInit
-from tools.baixing_elasticsearch import BXElasticSearch
 from retrying import retry
 from pydantic import validate_arguments, ValidationError  # 支持泛型参数校验
 from typing import Any, Tuple, List, Dict  # 泛型类型支持
 import json
-from tools.milvus_utils101 import MyMilvus
 import concurrent.futures
 
-mymilvus = MyMilvus()
-es = BXElasticSearch()
+
 logger = logInit("ElasticSearch && Milvus")
 indexs = "dw_article"
 
@@ -75,12 +72,12 @@ def update_by_query_es_data(query_id: str, paras: List, indexs: str = "dw_articl
 
     es_back = {}
     try:
-        # es_back = es_retry()
-        es_back = {"response":"success"} # TODO 此处为test，后面需要修改
+        es_back = es_retry()
+        # es_back = {"success": True} # TODO 此处为test，后面需要修改
         pass
     except Exception as e:
         logger.exception(msg=e)
-    status = (True if es_back else False)
+    status = es_back.get("success", False)
     return status
 
 
@@ -131,17 +128,38 @@ def run(request: Dict) -> Dict:
         r["retcode"] = 1
         r["msg"] = "data validation error"
     else:
-        not_downloaded_datas_list = get_not_downloaded_datas(indexs=indexs, query_id="es_query_not_download",
-                                                             vector_id_list=re_clean_ids)
-        print(not_downloaded_datas_list)
-        total_value = async_io_result(not_downloaded_datas_list)
-        print(total_value)
-        for io_result in total_value:
-            if io_result is False:
-                logger.error("服务端错误")
-                r["retcode"] = 1
-                r["msg"] = "server error"
-                return r
+        # 加锁操作
+        with red_lock_factory.create_lock(f'update_es', ttl=120000):  # 加锁操作，120000毫秒/120秒失效
+
+            not_downloaded_datas_list = get_not_downloaded_datas(indexs=indexs, query_id="es_query_not_download",
+                                                                 vector_id_list=re_clean_ids)
+            print(not_downloaded_datas_list)
+            total_value = async_io_result(not_downloaded_datas_list)
+            print(total_value)
+            for io_result in total_value: # 3个io操作
+                if io_result is False:
+                    logger.error("内部服务io错误")
+                    r["retcode"] = 1
+                    r["msg"] = "server error"
+                    logger.info("[二次清洗] [结果:{}]".format(str(r)))
+                    return r
+
+            # 检查es操作是否完成，后续可接es基础服务的异步结果，目前不支持
+            longest_time = 60 # 允许基础服务积压60秒处理
+            while longest_time > 0:
+                time.sleep(1)
+                longest_time -= 1
+
+                not_download_rowkey_list = []  # 未使用的rowkey列表
+                for i, data in enumerate(not_downloaded_datas_list):
+                    rowkey = data.get("rowkey", "")
+                    if rowkey:
+                        not_download_rowkey_list.append(rowkey)
+                not_download_rowkey_list_str = json.dumps(not_download_rowkey_list, ensure_ascii=False)
+                check_dw_datas = get_batch_es_data(query_id="query_check_re_clean", paras=[not_download_rowkey_list_str], indexs=indexs)
+                if len(check_dw_datas) == 0:
+                    break
+
         r["retcode"] = 0
         r["msg"] = "success"
     logger.info("[二次清洗] [结果:{}]".format(str(r)))
@@ -206,8 +224,7 @@ def get_not_downloaded_datas(indexs: str, query_id: str, vector_id_list: List[in
     上游认为有问题的数据用is_used字段标识，下游用status标识.
     :param indexs: es 索引名
     :param query_id: es 模板
-    :param paras: 参数列表
-    :param scroll_id: 游标id 首次或中途、最后提交都会有scrollId这个参数
+    :param vector_id_list: 向量id列表
     :return:
     """
     vector_id_list_str_list = [str(i) for i in vector_id_list]
@@ -219,7 +236,6 @@ def get_not_downloaded_datas(indexs: str, query_id: str, vector_id_list: List[in
 
     while 1:
         if dw_datas:
-            # print(dw_datas)
             dw_datas, scroll_id = get_batch_scroll_es_data(
                 indexs=indexs,
                 paras=[vector_id_list_str],

@@ -1,9 +1,7 @@
 {
   "_source": {
     "includes": [
-      "rowkey",
-      "title",
-      "content"
+      "rowkey"
     ]
   },
   "query": {
@@ -17,6 +15,6 @@
       ]
     }
   },
-  "size": %d,
+  "size": 1000,
   "seq_no_primary_term": true
 }

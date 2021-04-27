@@ -8,7 +8,6 @@
 @file: baixing_elasticsearch.py
 @time: 2020/12/14 20:52
 @desc: 百姓POST方式读取ElasticSearch接口，最新版本时间2021-04-19
-TODO update_by_query需写接口，后续接异步需写接口
 """
 # from elasticsearch import Elasticsearch
 import os
@@ -25,7 +24,7 @@ if mode == "dev":
     insert_port = conf.getConf('elasticsearch', 'dev_insert_port')
     search_host = "%s:%s" % (ip, search_port)
     insert_host = "%s:%s" % (ip, insert_port)
-    print(insert_host)
+    # print(insert_host)
 elif mode == "prod":
     HOST = conf.getConf('elasticsearch', 'prod_host')
     search_host = HOST

@@ -16,7 +16,7 @@ from config import conf
 import logging
 from tools.time_utils import get_current_date
 
-log_dir = conf.getConf("common", "LOG_PATH").strip() # 日志路劲
+log_dir = conf.getConf("common", "LOG_PATH").strip() # 日志路径
 log_level = conf.getConf("common", "LOG_LEVEL")
 
 
@@ -36,7 +36,7 @@ def logInit(logger_name):
         log_handler = logging.StreamHandler()
     else:
         log_handler = logging.FileHandler(
-            f"{log_dir}.{get_current_date()}.log", encoding="utf-8"
+            f"{log_dir}/shop_article.{get_current_date()}.log", encoding="utf-8"
         )  # 中文显示
 
     fmt = "%(asctime)s %(levelname)s %(process)d %(filename)s %(funcName) %(lineno)d %(message)s"

@@ -5,13 +5,10 @@
 @license: 
 @contact: liuzhiliang_pc@163.com
 @software: pycharm
-@file: sync_re_clean_pipe.py
-@time: 2021/4/23 15:49
-@desc:
+@file: re_clean_pipe.py
+@time: 2021/4/13 11:32
+@desc: 获取需二次清洗的id，由id查询已使用的文档
 """
-
-import time
-from init import celery
 
 from tools.log import logInit
 from tools.baixing_elasticsearch import BXElasticSearch
@@ -22,8 +19,12 @@ import json
 from tools.milvus_utils101 import MyMilvus
 import concurrent.futures
 
+
+mymilvus = MyMilvus()
+es = BXElasticSearch()
 logger = logInit("ElasticSearch && Milvus")
 indexs = "dw_article"
+# logger.info("试验")
 
 # 批量删除未使用文档对应的向量
 @validate_arguments
@@ -51,7 +52,6 @@ def delete_milvus_vectors(mymilvus, vector_id_list: List[int], business_category
         return status
 
     status = False
-    mymilvus = MyMilvus()
     try:
         status = delete_milvus101(mymilvus=mymilvus, ids=vector_id_list, collection_name=collection_name)
     except Exception as e:
@@ -69,7 +69,6 @@ def update_by_query_es_data(query_id: str, paras: List, indexs: str = "dw_articl
     """
     @retry(stop_max_attempt_number=3)
     def es_retry():
-        es = BXElasticSearch()
         es_back = es.update_by_query_pro(query_id=query_id, paras=paras, indexs=indexs)
         return es_back
 
@@ -95,7 +94,6 @@ def get_batch_es_data(query_id: str, paras: List, indexs: str = "dw_article", ma
     """
     @retry(stop_max_attempt_number=3)
     def es_retry():
-        es = BXElasticSearch()
         es_back = es.search_pro(query_id=query_id, paras=paras, indexs=indexs)
         return es_back
     es_back = {}
@@ -111,7 +109,7 @@ def get_batch_es_data(query_id: str, paras: List, indexs: str = "dw_article", ma
             datas = es_response["hits"]["hits"][:max_nums]  # 取匹配的若干条数据,最多为10000条数据
     return datas
 
-@celery.task
+
 def run(request: Dict) -> Dict:
     """
     校验请求功能
@@ -169,7 +167,6 @@ def get_batch_scroll_es_data(indexs: str, query_id: str, paras: List, scroll_id:
     :param scroll_id: 游标id 首次或中途、最后提交都会有scrollId这个参数
     :return:
     """
-    es = BXElasticSearch()
     if not scroll_id:  # 首次游标搜索
         res_scroll = es.search_scroll_pro(
             query_id=query_id, paras=paras, indexs=indexs, scroll=True
@@ -208,8 +205,7 @@ def get_not_downloaded_datas(indexs: str, query_id: str, vector_id_list: List[in
     上游认为有问题的数据用is_used字段标识，下游用status标识.
     :param indexs: es 索引名
     :param query_id: es 模板
-    :param paras: 参数列表
-    :param scroll_id: 游标id 首次或中途、最后提交都会有scrollId这个参数
+    :param vector_id_list: 向量id列表
     :return:
     """
     vector_id_list_str_list = [str(i) for i in vector_id_list]
@@ -240,7 +236,6 @@ def async_io_result(params):
     """
     对查询的数据（含vector_id、rowkey、business_category字段）执行数据记录删除操作
     """
-    mymilvus = MyMilvus()
     total_value = [] # 异步返回数据
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         to_do = []
@@ -272,11 +267,11 @@ def async_io_result(params):
             total_value.append(res_future)
     return total_value
 
+
 if __name__ == "__main__":
-    time0 = time.time()
     data = {"id_list": [395153, 459730]}
     print(run(request=data))
     # 顺序为先加锁，并根据id范围查询未使用的rowkey，然后异步删除对应的向量和es文档，完成后解锁退出
     # 缺少的异步环节是确认成功删除的查询，es和向量都要检查。
     # 可视为查询和删除、再确认删除成功是一个调度任务。
-    print(time.time()- time0)
+

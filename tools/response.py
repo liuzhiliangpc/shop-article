@@ -37,7 +37,7 @@ class Response:
     @staticmethod
     def error(msg: str='', **kwargs) -> FlaskResponse:
         res_content = {
-            'code': 1,
+            'retcode': 1,
             'msg': msg
         }
         res_content.update(kwargs)
@@ -47,7 +47,7 @@ class Response:
     @staticmethod
     def success(msg: str = 'success', **kwargs) -> FlaskResponse:
         res_content = {
-            'code': 0,
+            'retcode': 0,
             'msg': msg,
         }
         res_content.update(kwargs)

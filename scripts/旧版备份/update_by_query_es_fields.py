@@ -11,15 +11,15 @@
 """
 
 from tools.log import logInit
-# from tools.baixing_elasticsearch import BXElasticSearch
+from tools.baixing_elasticsearch import BXElasticSearch
 from retrying import retry
 from pydantic import validate_arguments, ValidationError # 支持泛型参数校验
 from typing import Any, Tuple, List, Dict # 泛型类型支持
 import json
 import copy
-from init import es
+# from init import es
 
-# es = BXElasticSearch()
+es = BXElasticSearch()
 logger = logInit("ElasticSearch")
 
 def update_by_query_es_data(query_id: str, paras: List, indexs: str = "dw_article") -> Dict:

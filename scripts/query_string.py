@@ -10,17 +10,14 @@
 @desc: ES查询接口
 """
 
-from tools.log import logInit
-# from tools.baixing_elasticsearch import BXElasticSearch
 from retrying import retry
 from pydantic import validate_arguments, ValidationError # 支持泛型参数校验
 from typing import Any, Tuple, List, Dict # 泛型类型支持
 import json
 import copy
 from init import es
+from core.core import logger
 
-# es = BXElasticSearch()
-logger = logInit("ElasticSearch")
 
 def get_batch_es_data(query_id: str, paras: List, indexs: str = "dw_article", max_nums: int = 10000) -> List:
     """

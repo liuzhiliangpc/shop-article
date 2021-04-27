@@ -13,9 +13,10 @@ class BackEndCore(object):
         pass
         # 预加载需要的实例
         self.gateways = (
-            ['scripts.a0001'],
-            ['scripts.a0002'],
-            ['scripts.a0003'],
+            ['scripts.query_string'],
+            ['scripts.update_es_increase_download'],
+            ['scripts.re_clean_pipe'],
+            ['scripts.update_es_fields'],
         )
         for gateway in self.gateways:
             lib = importlib.import_module(gateway[0])

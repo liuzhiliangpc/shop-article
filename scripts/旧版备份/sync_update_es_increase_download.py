@@ -12,13 +12,16 @@
 """
 
 import time
-from init import es, red_lock_factory
+from init import celery, es, red_lock_factory
 
 from retrying import retry
+from tools.log import logInit
 from pydantic import validate_arguments, ValidationError # 支持泛型参数校验
 from typing import Any, Tuple, List, Dict # 泛型类型支持
 import json
-from core.core import logger
+
+
+logger = logInit("ElasticSearch")
 
 
 @validate_arguments # 类型不一致时自动强转变量类型
@@ -29,14 +32,13 @@ def validate_request(rowkey: str, seq_no: int, primary_term: int) -> bool:
     return True
 
 # 拆为多个函数在web中执行
-def run(request: Dict):
+def run(request: Dict) -> Dict:
     """
     处理查询请求
     :param request: 请求参数
     :return: 请求结果
     """
     r = {}
-    match_rowkey_version_list = []
     # 只校验必须字段，其他字段无法校验
     old_version_update_datas = request.get("data", [])
     # 检查校验
@@ -52,14 +54,14 @@ def run(request: Dict):
             r["retcode"] = 1
             r["msg"] = "some errors in arguments validation"
             logger.info("[消耗文章] [结果:{}]".format(str(r)))
-            return r, match_rowkey_version_list
+            return r
 
         if not is_validated: # rowkey为空情形亦跳出
             logger.error("rowkey is ''")
             r["retcode"] = 1
             r["msg"] = "some errors in arguments validation"
             logger.info("[消耗文章] [结果:{}]".format(str(r)))
-            return r, match_rowkey_version_list
+            return r
 
     indexs = "dw_article"
     # 校验版本
@@ -75,23 +77,29 @@ def run(request: Dict):
 
     if match_rowkey_version_list:
         match_rowkey_version_list_str = json.dumps(match_rowkey_version_list, ensure_ascii=False)
-        try:
-            with red_lock_factory.create_lock(f'update_es', ttl=120000):  # 加锁操作，120000毫秒/120秒失效
-                status = update_by_query_es_data(query_id="update_by_query_increase_download_count", paras=[match_rowkey_version_list_str],
-                                              indexs=indexs)
-                if not status: # 传入基础服务失败
-                    logger.warning("es service connect fail")
-                    r["retcode"] = 1
-                    r["msg"] = "es service error"
-                    logger.info("[消耗文章] [结果:{}]".format(str(r)))
-                    return r, match_rowkey_version_list
-        except Exception as e:
-            r["retcode"] = 1
-            r["msg"] = "please try it again after one minute or repeat the query and update data later"  # 完全执行成功，不考虑es基础服务正常返回
-            logger.info("[消耗文章] [结果:{},{}]".format(str(r), e))
-            return r, match_rowkey_version_list
+        with red_lock_factory.create_lock(f'update_es', ttl=120000):  # 加锁操作，120000毫秒/120秒失效
+            status = update_by_query_es_data(query_id="update_by_query_increase_download_count", paras=[match_rowkey_version_list_str],
+                                          indexs=indexs)
+            if not status: # 传入基础服务失败
+                logger.warning("es service connect fail")
+                r["retcode"] = 1
+                r["msg"] = "es service error"
+                logger.info("[消耗文章] [结果:{}]".format(str(r)))
+                return r
+            # 检查es操作是否完成，后续可接es基础服务的异步结果，目前不支持
+            longest_time = 60  # 允许基础服务积压60秒处理
+            # 需要说明的是，当限制最大使用次数不等于1时，检查操作完成要跳过。
+            # increase_download_count和reduce_download_count两个需要es基础服务的返回才有效
+            while longest_time > 0:
+                time.sleep(1)
+                longest_time -= 1
+                check_dw_datas = get_batch_es_data(query_id="query_check_increase_download_count", paras=[match_rowkey_version_list_str],
+                                                   indexs=indexs)
+                if len(check_dw_datas) == 0:
+                    break
+
     logger.info("[文章消耗] [结果:{}]".format(str(r)))
-    return r, match_rowkey_version_list
+    return r
 
 
 def update_by_query_es_data(query_id: str, paras: List, indexs: str = "dw_article") -> Dict:
@@ -116,7 +124,34 @@ def update_by_query_es_data(query_id: str, paras: List, indexs: str = "dw_articl
     return status
 
 
-def get_batch_scroll_es_data(indexs: str, query_id: str, paras: List, scroll_id: str = ""):
+def get_batch_es_data(query_id: str, paras: List, indexs: str = "dw_article", max_nums: int = 10000) -> List:
+    """
+    获取ES数据库数据，提供文档
+    :param indexs: es 索引名
+    :param query_id: es 模板
+    :param max_nums: 前nums数据
+    :param paras: 参数列表
+    :return:
+    """
+    @retry(stop_max_attempt_number=3)
+    def es_retry():
+        es_back = es.search_pro(query_id=query_id, paras=paras, indexs=indexs)
+        return es_back
+    es_back = {}
+    try:
+        es_back = es_retry()
+    except Exception as e:
+        logger.exception(msg=e)
+    es_response = es_back.get("restResponse")
+    datas = []
+    if es_response:
+        count = es_response["hits"]["total"]["value"]
+        if count > 0:
+            datas = es_response["hits"]["hits"][:max_nums]  # 取匹配的若干条数据,最多为10000条数据
+    return datas
+
+
+def get_batch_scroll_es_data(indexs: str, query_id: str, paras: List, scroll_id: str = "") -> List:
     """
     游标方式获取ES数据库数据，提供文档，查询id是否已使用
     :param indexs: es 索引名
@@ -185,7 +220,7 @@ def get_todo_download_datas(indexs: str, query_id: str, rowkey_list: List[str]) 
             dw_datas_all.update(dw_mini_batch)
         else:
             break
-    logger.info("[消耗文章] [本批次应用库查到文档数为{}]".format(len(dw_datas_all)))
+    logger.info("[消耗文章] [本批次应用库未使用文档数为{}]".format(len(dw_datas_all)))
     return dw_datas_all
 
 
@@ -202,7 +237,7 @@ def verify_es_version(old_version_update_datas : List, indexs: str):
             rowkey_list.append(rowkey)
 
     lastest_version_update_datas = get_todo_download_datas(indexs=indexs, query_id="query_version", rowkey_list=rowkey_list)
-    # print(lastest_version_update_datas)
+    print(lastest_version_update_datas)
 
     not_match_rowkey_version_list = [] # 不一致的rowkey列表
     match_rowkey_version_list = [] # 一致的rowkey列表
@@ -217,7 +252,7 @@ def verify_es_version(old_version_update_datas : List, indexs: str):
                 match_rowkey_version_list.append(rowkey)
             else:
                 not_match_rowkey_version_list.append(rowkey)
-    # logger.info("[消耗文章] [版本一致的rowkey:{}]".format(match_rowkey_version_list))
+    logger.info("[消耗文章] [版本一致的rowkey:{}]".format(match_rowkey_version_list))
     logger.info("[消耗文章] [版本不一致的rowkey:{}]".format(not_match_rowkey_version_list))
     return match_rowkey_version_list, not_match_rowkey_version_list
 
@@ -233,8 +268,8 @@ if __name__ == "__main__":
     # update_by_query 函数执行更新download_count字段
     # 这一步是异步
     indexs = "dw_article"
-    request = {"data": [{"rowkey": "020058828560700da7544f5f1de51b", "_seq_no": 118165, "_primary_term": 13},
-                        {"rowkey": "0200773838847028f290c8f76e44dd", "_seq_no": 118166, "_primary_term": 13,}]}
+    request = {"data": [{"rowkey": "020058828560700da7544f5f1de51b", "_seq_no": 118163, "_primary_term": 13},
+                        {"rowkey": "0200773838847028f290c8f76e44dd", "_seq_no": 118164, "_primary_term": 13,}]}
     # old_version_update_datas = request.get("data")
     # 不一致的rowkey需要返回告知请求方
     # verify_es_version(old_version_update_datas, indexs=indexs)
