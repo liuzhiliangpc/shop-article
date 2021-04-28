@@ -1,0 +1,12 @@
+{
+    "query": {
+        "bool":{
+            "must":
+            [{
+                "match":{
+                    "rowkey": "%s"
+                }
+            }]
+        }
+	}
+}

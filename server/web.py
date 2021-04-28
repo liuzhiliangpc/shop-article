@@ -1,13 +1,16 @@
-#! /usr/bin/env python3
-#coding=utf-8
+#!/usr/bin/env python3
+# encoding: utf-8
+"""
+@author: liuzhiliang
+@license:
+@contact: liuzhiliang_pc@163.com
+@software: pycharm
+@file: web.py
+@time: 2021/4/13 11:32
+@desc: web服务
 """
 
-    web服务
-
-"""
 import json
-# import importlib
-
 from flask import Flask, Response
 from flask import request
 
@@ -97,3 +100,5 @@ def article_confirm():
     except Exception as e:
         logger.error(e)
         return HttpResponse({'retcode': 1, 'msg': "{}".format(e)})
+
+

@@ -1,0 +1,18 @@
+{
+  "script": {
+    "source": "ctx._source['status'] = 1",
+    "lang": "painless"
+  },
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "terms": {
+            "rowkey": %s
+          }
+        }
+      ]
+    }
+  }
+}
+

@@ -1,0 +1,30 @@
+{
+  "_source": {
+    "includes": [
+      "rowkey",
+      "vector_id",
+      "business_category"
+    ]
+  },
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "terms": {
+            "vector_id": %s
+          }
+        },
+        {
+          "range": {
+            "download_count": {
+              "lte": 0
+            }
+          }
+        }
+      ]
+    }
+  },
+  "size": 1000
+}
+
+

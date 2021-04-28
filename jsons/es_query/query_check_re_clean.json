@@ -1,0 +1,23 @@
+{
+  "_source": {
+    "includes": [
+      "rowkey"
+    ]
+  },
+  "query": {
+		"bool": {
+			"filter": [{
+				"terms": {
+					"rowkey": %s
+				},
+              {
+                "term": {
+                  "is_used": 0
+                }
+              }
+			}]
+		}
+	},
+	"size": 1
+}
+
