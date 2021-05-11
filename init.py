@@ -14,6 +14,7 @@ from flask import Flask
 from tools.celery_utils import make_celery
 from config_outer import ConfigOuter
 import redis
+
 # import redislite # 测试场景，pip安装，Redislite是Redis键值存储的自包含Python接口
 from redlock import RedLockFactory
 
@@ -24,7 +25,11 @@ from tools.baixing_elasticsearch import BXElasticSearch
 mymilvus = MyMilvus()
 es = BXElasticSearch()
 # redis连接池
-redis_store = redis.StrictRedis(host=ConfigOuter.REDIS_LOCK_HOST, port=ConfigOuter.REDIS_LOCK_PORT, db=ConfigOuter.REDIS_LOCK_DB)
+redis_store = redis.StrictRedis(
+    host=ConfigOuter.REDIS_LOCK_HOST,
+    port=ConfigOuter.REDIS_LOCK_PORT,
+    db=ConfigOuter.REDIS_LOCK_DB,
+)
 # 初始化阶段，实例化锁
 red_lock_factory = RedLockFactory(connection_details=[redis_store])
 
@@ -35,7 +40,6 @@ def create_app():
 
     return app
 
+
 app = create_app()
 celery = make_celery(app)
-
-

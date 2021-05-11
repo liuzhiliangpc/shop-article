@@ -41,10 +41,12 @@ RUN pip3 install -r requirements.txt
 
 # 设置本地时区
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai' > /etc/timezone
-RUN mkdir -p /tmp/
+RUN mkdir -p /log
 
 #容器启动命令
 #CMD python3 bootstrap.py
-CMD gunicorn -c gunicorn_config.py 'server.web:app'
+#CMD gunicorn -c gunicorn_config.py 'server.web_celery:app'
+#CMD celery -A async_tasks.celery worker --concurrency=2 --loglevel=info -P gevent
+CMD ["bash", "./run.sh"]
 #HEALTHCHECK --start-period=1m --interval=2m --timeout=20s --retries=3 CMD /bin/bash init.sh
 
