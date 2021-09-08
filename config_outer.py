@@ -5,7 +5,7 @@ from config import conf
 
 
 class BaseConfig:
-    pass
+    POSTGRESQL_MANUAL_ARTICLE_TABLE = "manual_article"
 
 
 class LocalConfig(BaseConfig):
@@ -16,7 +16,7 @@ class LocalConfig(BaseConfig):
     REDIS_LOCK_HOST = "localhost"
     REDIS_LOCK_PORT = 6379
     REDIS_LOCK_DB = 0
-
+    POSTGRESQL_MANUAL_ARTICLE_TABLE = "manual_article_dev"
 
 class ProdConfig(BaseConfig):
     REDIS_URL = "redis://r-data-yxt.redis.zhangbei.rds.aliyuncs.com:6379/1"

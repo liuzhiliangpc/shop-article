@@ -294,6 +294,43 @@ def get_paragraphs(text):
         paragraphs.append(current_text)
     return paragraphs
 
+@retry(stop_max_attempt_number=3)
+def pg_execute(mypg, sql=None, params=None, is_select=False):
+    if is_select: # 查询请求
+        try:
+            data = mypg.execute(sql=sql, params=params)
+        except Exception as e:
+            raise Exception(f'sql查询出错:{sql}, e:{str(e)}')
+        else:
+            return data
+    else: # 更新、插入、删除请求失败需回滚
+        try:
+            mypg.execute(sql=sql, params=params)
+        except Exception as e:
+            mypg.conn.rollback()
+            raise Exception(f'sql执行出错，e:{str(e)}')
+        else:
+            return None
+
+@retry(stop_max_attempt_number=3)
+def db_execute(db_util, sql=None, params=None, is_select=False):
+    if is_select: # 查询请求
+        try:
+            with db_util.auto_commit():
+                data = db_util.select(sql=sql, params=params)
+        except Exception as e:
+            raise Exception(f'sql查询出错:{sql}, e:{str(e)}')
+        else:
+            return data
+    else: # 更新、插入、删除请求失败需回滚，已内置到auto_commit
+        try:
+            with db_util.auto_commit():
+                db_util.update(sql=sql, params=params)
+        except Exception as e:
+            raise Exception(f'sql执行出错，e:{str(e)}')
+        else:
+            return None
+
 if __name__ == "__main__":
     text = "Repost 这是一条#自带声音#的微博：土拨鼠的逃生新技能get，由#华为Mate20#友情提供 http://t.cn/EyAcRWr "
     urls = url_extract(text)

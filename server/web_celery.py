@@ -18,6 +18,7 @@ from async_tasks.task3 import run
 
 from async_tasks import sync_check_es_update # 合并后的接口
 from async_tasks import sync_check_clean
+from async_tasks import sync_base_article_insert
 "----------------------------------------------------------"
 from init import app
 from init import celery
@@ -143,4 +144,17 @@ def re_clean_request():
         return Response.error(msg=str(e))
 
 # "======================================================================"
-
+# 基础文章异步导入到基础库
+@app.route("/shop_article/base_article_insert", methods=["POST"])
+def base_article_insert():
+    infos = json.loads(request.get_data(as_text=True))
+    try:
+        # 执行同步计算
+        ret = core.handle("base_article_insert", infos)
+        if ret.get("retcode") == 0:
+            result = sync_base_article_insert.delay(request=infos)
+            ret.update({"result_id": result.id})
+        return Response.construct_response(ret)
+    except Exception as e:
+        logger.error("任务异常")
+        return Response.error(msg=str(e))

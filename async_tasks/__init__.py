@@ -15,3 +15,4 @@ from .task1 import add_together
 from .task3 import run
 from .sync_check_es import sync_check_es_update
 from .sync_check_es import sync_check_clean
+from .sync_upload_article import sync_base_article_insert
